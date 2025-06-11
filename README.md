@@ -28,7 +28,9 @@ python -m venv .venv
 # • Windows (PowerShell)
 .venv\Scripts\Activate.ps1
 
-# 3. Pip install requirements
+# 3. Pip install requirements (these are generated with `pip freeze > requirements.txt`)
 pip install -r requirements.txt
 
 ```
+
+To run tests, see [docs/tests.md](docs/tests.md).
