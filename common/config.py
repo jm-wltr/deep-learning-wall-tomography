@@ -19,7 +19,7 @@ RAYS_DIR = os.path.join(DATA_DIR, 'rays')
 SECTIONS_DIR = os.path.join(DATA_DIR, 'sections')
 
 # Color mappings
-Colores = {
+colors = {
     "Piedra": [172, 96, 73],
     "Mortero": [37, 173, 221]
 }

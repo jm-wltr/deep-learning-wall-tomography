@@ -17,3 +17,18 @@ The data we are working with was obtained via a COMSOL Multiphysics simulation. 
 
 ## 📁 Versions
 To obtain the tomography images, we have been experimenting with two different methods. The first one is to obtain the images based on the sonic rays metadata; and the second one is to use the raw waveforms instead.
+
+# Instructions
+
+```
+# 1. Create a venv folder named “.venv”
+python -m venv .venv
+
+# 2. Activate it
+# • Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+# 3. Pip install requirements
+pip install -r requirements.txt
+
+```
