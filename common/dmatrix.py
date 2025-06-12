@@ -6,7 +6,7 @@ from .config import dims
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 # Column names for ray data files
-COLUMNS = ["Xe","Ye","Ze","Xr","Yr","Zr","Velocity","Amplitude","Frequency"]
+COLUMNS = ["RayID", "Xe","Ye","Ze","Xr","Yr","Zr","Velocity","Amplitude","Frequency"]
 
 def ray_length_in_voxel(p0: np.ndarray, p1: np.ndarray, voxel: np.ndarray) -> float:
     """

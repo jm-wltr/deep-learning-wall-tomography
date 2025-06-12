@@ -13,9 +13,10 @@ Each line represents one ray and contains **10 tab-separated columns**:
 | 1      | Ray ID (1-based index)               | Integer             |
 | 2–4    | Emission point coordinates (x, y, z) | Meters (floats)     |
 | 5–7    | Reception point coordinates (x, y, z)| Meters (floats)     |
-| 8      | Amplitude of the wave                | Arbitrary units     |
-| 9      | Central frequency                    | Kilohertz (kHz)     |
-| 10     | Propagation velocity                 | Meters per second   |
+| 8     | Propagation velocity                 | Meters per second    |
+| 9      | Amplitude of the wave                | Arbitrary units     |
+| 10      | Central frequency                    | Kilohertz (kHz)    |
+
 
 
 ## File Format of `PL*.txt`
