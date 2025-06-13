@@ -2,7 +2,7 @@
 
 Each `rays/rayXX.txt` file contains metadata about the 66 acoustic rays (6 emitters and 11 sensors) used to simulate wave propagation through the wall section depicted in `sections/XX.jpg` (XX ranges from 00 to 99). 
 
-Each `"numerical analyses"/XX/` folder contains six files (`PL1.txt` to `PL6.txt`), each representing the raw waveform response measured at 11 fixed simulated SLV sensors (over 10,000 time steps) when a wave is emitted by one of six AHSs through wall section XX.
+Each `"waveforms"/XX/` folder contains six files (`PL1.txt` to `PL6.txt`), each representing the raw waveform response measured at 11 fixed simulated SLV sensors (over 10,000 time steps) when a wave is emitted by one of six AHSs through wall section XX.
 
 ## Columns in `rayXX.txt`
 
