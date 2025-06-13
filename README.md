@@ -4,12 +4,35 @@ This project explores the use of deep learning to reconstruct the internal struc
 
 ## 📁 Repository Structure
 ```
-data/
-├── waveforms/ # Raw Y-displacement waveforms from COMSOL (was "numerical analyses")
-├── rays/ # Ray path metadata
-├── sections/ # Ground-truth wall cross-section images for each simulation
-docs/
-└── data.md # Detailed documentation of the dataset structure and formats
+├── common/ # Shared utilities and data loaders
+│ ├── config.py # Paths, device, global constants
+│ ├── dmatrix.py # Ray-voxel intersection logic
+│ ├── pmatrix.py # Section image → purity mask
+│ ├── waveforms.py # Waveform I/O & reduction
+│ └── single_param_dataset.py # Not working yet!
+├── models/ # Neural network definitions
+│ └── autoencoder/ # Autoencoder dataset & architectures
+│ └── pixel/ # Pixel-based classifiers
+│ └── image/ # Full-image convolutional models
+├── scripts/ # Entry-point scripts (training, evaluation)
+│ └── train_and_eval.py # Not done yet!
+├── experiments/ # Versioned experiment pipelines
+│ ├── v1_baseline/ # Ray-metadata experiments
+│ └── v2_autoencoder/ # Autoencoder experiments
+├── notebooks/ # Exploratory analyses and prototyping
+│ ├── matrices_demo.ipynb # Demo of dmatrix and pmatrix
+│ └── waveforms.ipynb # Demo of waveforms.py
+├── data/ # Raw and preprocessed data
+│ ├── waveforms/ # Y-displacement waveforms from COMSOL
+│ ├── rays/ # Ray path metadata (rayXX.txt)
+│ └── sections/ # Wall cross-section images (XX.jpg)
+├── artifacts/ # Generated intermediate files (e.g. AE .pt)
+├── results/ # Model outputs, figures, TensorBoard logs
+├── docs/ # Documentation
+│ ├── data.md # Dataset formats and conventions
+│ └── tests.md # Testing instructions
+├── README.md # This file
+└── requirements.txt # pip install dependencies
 ```
 
 ## 📁 Dataset
