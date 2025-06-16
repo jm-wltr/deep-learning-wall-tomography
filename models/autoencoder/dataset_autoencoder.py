@@ -43,7 +43,7 @@ class DatasetAutoencoder(Dataset):
         """
         # Determine save directory and filename
         self.waves_dir = path
-        cache_dir  = Path(BASE_DIR) / "artifacts" / "ae"
+        cache_dir  = Path(BASE_DIR) / "artifacts" / "autoencoder"
         cache_dir.mkdir(parents=True, exist_ok=True)
         fname = "original.pt" if reduction=="" else f"{reduction}_{n}.pt"
         cache_path = cache_dir / fname

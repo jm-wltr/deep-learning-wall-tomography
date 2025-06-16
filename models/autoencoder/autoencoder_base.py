@@ -49,9 +49,9 @@ class AutoencoderBase(nn.Module):
         self.writer = SummaryWriter(self.log_dir)
         self.writer.add_text("Description", description)
         self.writer.add_custom_scalars_multilinechart(
-            series_list=["Loss/Train", "Loss/Validation"],
-            category="Metrics",
-            title="Training vs Validation Loss",
+            ['Loss/Train', 'Loss/Validation'],
+            category='Metrics',
+            title='Train vs Validation Loss'
         )
 
         # Store hyperparameters and history

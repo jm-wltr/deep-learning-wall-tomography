@@ -11,7 +11,9 @@ Usage:
         --epochs 50 \
         --train-frac 0.8 \
         --seed 42 \
-        --save-dir artifacts/autoencoder/checkpoints
+        --save-dir artifacts/autoencoder/checkpoints \
+        --n 0 \
+        --reduction ""
 """
 import argparse
 from pathlib import Path
@@ -26,7 +28,7 @@ from models.autoencoder.architectures.conv_autoencoder16 import ConvAutoencoder1
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train ConvAutoencoder16 on waveform data with reduction")
-    parser.add_argument("--data-dir", type=Path, default="data/waves",
+    parser.add_argument("--data-dir", type=Path, default="data/waveforms",
                         help="Directory containing raw waveform data")
     parser.add_argument("--reduction", type=str, default="",
                         help="Reduction method: '', 'resample', 'mean', 'max', etc.")

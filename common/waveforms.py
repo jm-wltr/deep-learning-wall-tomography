@@ -93,29 +93,29 @@ def load_sample_waveforms(carpeta: Path, modo: str = "", n: int = 0) -> torch.Te
     return torch.cat(emisiones, dim=0)
 
 
-def load_all_waveforms(carpeta: Path, reduccion: str = "", n: int = 0) -> torch.Tensor:
+def load_all_waveforms(carpeta: Path, reduction: str = "", n: int = 0) -> torch.Tensor:
     """
     Load all waveforms across all samples, ignoring sample boundaries.
 
     Parameters:
         carpeta: Path to 'numerical analyses' root dir
-        reduccion, n: passed to ondas_probeta
+        reduction, n: passed to ondas_probeta
 
     Returns:
         Tensor of shape (total_rays, reduced_length)
     """
     carpetas = sorted([d for d in carpeta.iterdir() if d.is_dir()])
-    datos = [load_sample_waveforms(d, reduccion, n) for d in carpetas]
+    datos = [load_sample_waveforms(d, reduction, n) for d in carpetas]
     return torch.cat(datos, dim=0)
 
 
-def load_waveforms_by_sample(carpeta: Path, reduccion: str = "", n: int = 0, skips: list = []) -> torch.Tensor:
+def load_waveforms_by_sample(carpeta: Path, reduction: str = "", n: int = 0, skips: list = []) -> torch.Tensor:
     """
     Load waveforms organized by sample, skipping specified bad samples.
 
     Parameters:
         carpeta: Path to 'numerical analyses'
-        reduccion, n: passed to ondas_probeta
+        reduction, n: passed to ondas_probeta
         skips: list of sample directory names (as ints) to omit
 
     Returns:
@@ -124,5 +124,5 @@ def load_waveforms_by_sample(carpeta: Path, reduccion: str = "", n: int = 0, ski
     carpetas = sorted([d for d in carpeta.iterdir()
                        if d.is_dir() and int(d.name) not in skips],
                       key=lambda d: int(d.name))
-    datos = [load_sample_waveforms(d, reduccion, n) for d in carpetas]
+    datos = [load_sample_waveforms(d, reduction, n) for d in carpetas]
     return torch.stack(datos, dim=0)
