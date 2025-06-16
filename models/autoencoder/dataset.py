@@ -26,32 +26,32 @@ class DatasetAutoencoder(Dataset):
                  path: Path = Path(WAVES_DIR),
                  reduction: str = "",
                  n: int = 0,
-                 save: bool = True):
+                 save: bool = True,
+                 force_reload: bool = False):
         """
         PyTorch Dataset for autoencoder training on waveform data.
 
         Args:
-            path (Path): Path to a .pt file or directory of raw waves (default WAVES_DIR).
+            path (Path): Path to a directory of raw waves (default WAVES_DIR).
             reduction (str): Reduction method ('resample', 'mean', 'max', or '').
             n (int): Reduction parameter (e.g. number of points or window size).
             save (bool): Whether to save processed tensor to disk.
+            force_reload (bool): Whether to force a rebuild from raw data.
 
         Public Methods:
             plot_samples(n): Plot n random waveforms for inspection.
         """
         # Determine save directory and filename
-        save_dir = Path(BASE_DIR) / "artifacts" / "ae"
-        save_dir.mkdir(parents=True, exist_ok=True)
-        if path.suffix == ".pt":
-            save_path = path
-        else:
-            filename = "original.pt" if reduction == "" else f"{reduction}_{n}.pt"
-            save_path = save_dir / filename
+        self.waves_dir = path
+        cache_dir  = Path(BASE_DIR) / "artifacts" / "ae"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        fname = "original.pt" if reduction=="" else f"{reduction}_{n}.pt"
+        cache_path = cache_dir / fname
 
         # Load or create dataset
-        if save_path.exists():
+        if cache_path.exists() and not force_reload:
             # Load pre-saved tensor
-            self.data = torch.load(save_path)
+            self.data = torch.load(cache_path)
         else:
             # Read raw waveforms and apply reduction
             self.data = load_all_waveforms(path, reduction=reduction, n=n)
@@ -60,7 +60,7 @@ class DatasetAutoencoder(Dataset):
             std = self.data.std()
             self.data = (self.data - mean) / std
             if save:
-                torch.save(self.data, save_path)
+                torch.save(self.data, cache_path)
 
         # Record dataset size (num samples x num points per waveform)
         self.num_samples, self.length = self.data.shape
