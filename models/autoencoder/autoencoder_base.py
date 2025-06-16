@@ -1,10 +1,10 @@
-from common.config import os, DEVICE, BASE_DIR
-import time
+from common.config import DEVICE, BASE_DIR
 from pathlib import Path
-
+import time
+import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
-import torch
+from torch import Tensor
 
 
 class AutoencoderBase(nn.Module):
@@ -195,3 +195,20 @@ class AutoencoderBase(nn.Module):
         model.epochs_trained = checkpoint['epochs_trained']
         model.history = checkpoint['history']
         return model
+    
+    def forward(self, x):
+        x = self._ensure_batch_and_channel(x)
+        return self.decoder(self.encoder(x))
+
+    def encode(self, x):
+        x = self._ensure_batch_and_channel(x)
+        return self.encoder(x)
+
+    @staticmethod
+    def _ensure_batch_and_channel(x: Tensor) -> Tensor:
+        if x.dim() == 1:
+            return x.unsqueeze(0).unsqueeze(0)
+        if x.dim() == 2:
+            return x.unsqueeze(1)
+        return x
+    
