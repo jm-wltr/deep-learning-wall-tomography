@@ -198,7 +198,7 @@ class AutoencoderBase(nn.Module):
     
     def forward(self, x):
         x = self._ensure_batch_and_channel(x)
-        return self.decoder(self.encoder(x))
+        return self.decoder(self.encoder(x)).squeeze(1)
 
     def encode(self, x):
         x = self._ensure_batch_and_channel(x)

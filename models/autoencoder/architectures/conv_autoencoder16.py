@@ -8,6 +8,8 @@ from ..autoencoder_base import AutoencoderBase
 from ..dataset_autoencoder import DatasetAutoencoder
 from ..utils import split_dataset
 
+from common.config import DEVICE
+
 MODEL_NAME = "ConvAE16"
 DESCRIPTION = (
     "1D Conv Autoencoder w/ latent dim=16:\n"
