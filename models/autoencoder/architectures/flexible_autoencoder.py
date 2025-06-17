@@ -1,44 +1,22 @@
-"""
-conv_autoencoder.py
-
-Configurable 1D convolutional autoencoder that supports:
-  - Variable latent dimension
-  - Optional dropout
-  - Optional batch normalization
-  - Custom encoder/decoder layer sizes
-Usage:
-    model = ConvAutoencoder(
-        dataset,
-        latent_dim=32,
-        dropout=0.2,
-        use_batchnorm=True,
-        batch_size=64,
-        learning_rate=1e-3,
-        train_frac=0.8,
-        seed=42
-    )
-"""
 from pathlib import Path
+import time
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
+from torch import Tensor
 
 from ..autoencoder_base import AutoencoderBase
 from ..dataset_autoencoder import DatasetAutoencoder
 from ..utils import split_dataset
 
-MODEL_NAME = "ConvAutoencoder"
-DESCRIPTION = (
-    "Configurable 1D Conv Autoencoder with optional dropout and batchnorm,"
-    " variable latent size."
-)
 
 class ConvAutoencoder(AutoencoderBase):
     """
-    1D Convolutional Autoencoder with configurable options:
+    1D Convolutional Autoencoder with dynamic naming and description based on:
       - latent_dim: size of bottleneck
-      - dropout: dropout probability (0=no dropout)
+      - dropout: dropout probability
       - use_batchnorm: whether to insert BatchNorm1d layers
+      - encoder/decoder layer configurations
     """
     def __init__(
         self,
@@ -50,24 +28,52 @@ class ConvAutoencoder(AutoencoderBase):
         learning_rate: float = 1e-3,
         train_frac: float = 0.8,
         seed: int = None,
-        timestamp: bool = True
+        timestamp: bool = True,
+        reduction: str = "",
+        reduction_n: int = 0
     ):
-        super().__init__(model_name=MODEL_NAME,
-                         description=DESCRIPTION,
-                         batch_size=batch_size,
-                         learning_rate=learning_rate,
-                         timestamp=timestamp)
+        # Build dynamic model name
+        name_parts = ["ConvAE"]
+        if reduction:
+            name_parts.append(f"{reduction}{reduction_n}")
+        name_parts.append(f"lat{latent_dim}")
+        if dropout > 0:
+            name_parts.append(f"do{int(dropout*100)}")
+        if use_batchnorm:
+            name_parts.append("bn")
+        model_name = "_".join(name_parts)
+
+        # Build dynamic description
+        enc_cfg = dict(channels=[1, 8, 16], kernels=[15, 5], strides=[5, 2])
+        dec_cfg = enc_cfg  # symmetric
+        desc_parts = [f"1D ConvAE with latent={latent_dim}"]
+        desc_parts.append(f"dropout={dropout}")
+        desc_parts.append(f"batchnorm={use_batchnorm}")
+        layers_desc = (
+            f"Encoder: convs {list(zip(enc_cfg['channels'][:-1], enc_cfg['channels'][1:], enc_cfg['kernels'], enc_cfg['strides']))},"
+            f" Linear flat->{latent_dim}."
+            f" Decoder mirrors encoder."
+        )
+        description = "; ".join(desc_parts) + ". " + layers_desc
+
+        super().__init__(
+            model_name=model_name,
+            description=description,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            timestamp=timestamp
+        )
 
         # Data split
         train_set, val_set = split_dataset(dataset, train_frac, seed)
-        self.train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=True)
-        self.val_loader   = DataLoader(val_set,   batch_size=self.batch_size, shuffle=False)
+        self.train_loader = torch.utils.data.DataLoader(train_set, batch_size=self.batch_size, shuffle=True)
+        self.val_loader   = torch.utils.data.DataLoader(val_set,   batch_size=self.batch_size, shuffle=False)
 
         length = dataset.length  # waveform length
         # Encoder conv dimensions
-        channels = [1, 8, 16]
-        strides = [5, 2]
-        kernels = [15, 5]
+        channels = enc_cfg['channels']
+        strides = enc_cfg['strides']
+        kernels = enc_cfg['kernels']
 
         enc_layers = []
         for i in range(len(strides)):
