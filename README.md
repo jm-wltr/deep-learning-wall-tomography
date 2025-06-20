@@ -38,3 +38,5 @@ pip install torch numpy matplotlib jupyterlab tensorboard ipykernel
 ```
 
 To run tests, see [docs/tests.md](docs/tests.md) (these are not exhaustive at all).
+
+Have fun!
