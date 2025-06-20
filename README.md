@@ -33,7 +33,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 
 # 3. Pip install requirements
-pip install torch numpy matplotlib jupyterlab tensorboard ipykernel
+pip install torch numpy matplotlib jupyterlab tensorboard ipykernel pandas
 
 ```
 
