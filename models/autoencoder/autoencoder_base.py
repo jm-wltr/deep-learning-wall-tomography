@@ -30,22 +30,23 @@ class AutoencoderBase(nn.Module):
     ):
         super().__init__()
 
-        # Use global DEVICE from config
+        # Save hyperparameters
+        self.description = description
+        self.batch_size = batch_size
+        self.lr = learning_rate
+
+        # Device and naming
         self.device = DEVICE
         self.to(self.device)
-
-        # Create a unique run name
         if timestamp:
             ts = time.strftime('%Y-%m-%d_%H-%M-%S')
             self.run_name = f"{model_name}_{ts}"
         else:
             self.run_name = model_name
 
-        # Set up the logging directory
+        # Logging setup
         self.log_dir = logs_root / self.run_name
         self.log_dir.mkdir(parents=True, exist_ok=True)
-
-        # Initialize TensorBoard writer
         self.writer = SummaryWriter(self.log_dir)
         self.writer.add_text("Description", description)
         self.writer.add_custom_scalars_multilinechart(
@@ -54,9 +55,7 @@ class AutoencoderBase(nn.Module):
             title='Train vs Validation Loss'
         )
 
-        # Store hyperparameters and history
-        self.batch_size = batch_size
-        self.lr = learning_rate
+        # Training history
         self.epochs_trained = 0
         self.history = {"train_loss": [], "val_loss": []}
 
@@ -69,17 +68,6 @@ class AutoencoderBase(nn.Module):
         num_epochs: int,
         log_mode: str = "epoch",
     ) -> None:
-        """
-        Train for a number of epochs, logging losses and reconstructions.
-
-        Args:
-            train_loader: DataLoader for training data.
-            val_loader: DataLoader for validation data.
-            optimizer: torch optimizer.
-            criterion: loss function.
-            num_epochs: how many epochs to run.
-            log_mode: 'epoch' for per-epoch prints, 'batch' for per-batch.
-        """
         total_batches = len(train_loader)
 
         # Initial evaluation before any weight updates
@@ -90,14 +78,14 @@ class AutoencoderBase(nn.Module):
 
         # Main training loop
         for epoch in range(1, num_epochs + 1):
-            epoch_idx = self.epochs_trained + epoch
+            current_epoch = self.epochs_trained + 1
             self.train()
             running_loss = 0.0
             count = 0
             start_time = time.perf_counter()
 
             if log_mode == "batch":
-                print(f"\nEpoch {epoch_idx}/{self.epochs_trained + num_epochs}")
+                print(f"\nEpoch {current_epoch}/{self.epochs_trained + num_epochs}")
 
             for batch_idx, batch in enumerate(train_loader, 1):
                 optimizer.zero_grad()
@@ -107,7 +95,7 @@ class AutoencoderBase(nn.Module):
                 loss.backward()
                 optimizer.step()
 
-                running_loss += loss.item()
+                running_loss += loss.item() * batch.size(0)
                 count += batch.size(0)
 
                 if log_mode == "batch":
@@ -127,18 +115,13 @@ class AutoencoderBase(nn.Module):
             if log_mode == "epoch":
                 print(f"Epoch {self.epochs_trained}: train_loss={avg_train:.4f}, val_loss={val_loss:.4f}")
 
-            # Record metrics
+            # Record metrics and optional reconstructions
             self._log_metrics(avg_train, val_loss)
-
-            # Periodically log reconstructions if implemented
             if self.epochs_trained % 10 == 0 and hasattr(self, 'log_reconstruction'):
                 fig = self.log_reconstruction(val_loader, criterion)
                 self.writer.add_figure(f"Reconstruction/{self.epochs_trained}", fig, self.epochs_trained)
 
     def evaluate(self, loader, criterion) -> float:
-        """
-        Compute average loss over all samples in a DataLoader.
-        """
         total_loss = 0.0
         total_count = 0
         self.eval()
@@ -147,23 +130,17 @@ class AutoencoderBase(nn.Module):
                 batch = batch.to(self.device)
                 outputs = self(batch)
                 loss = criterion(outputs, batch)
-                total_loss += loss.item()
+                total_loss += loss.item() * batch.size(0)
                 total_count += batch.size(0)
         return total_loss / total_count
 
     def _log_metrics(self, train_loss: float, val_loss: float) -> None:
-        """
-        Internal: record to history and TensorBoard.
-        """
         self.history['train_loss'].append(train_loss)
         self.history['val_loss'].append(val_loss)
         self.writer.add_scalar('Loss/Train', train_loss, self.epochs_trained)
         self.writer.add_scalar('Loss/Validation', val_loss, self.epochs_trained)
 
     def plot_history(self) -> None:
-        """
-        Plot the training and validation loss curves.
-        """
         import matplotlib.pyplot as plt
         plt.plot(self.history['train_loss'], label='Train Loss')
         plt.plot(self.history['val_loss'], label='Validation Loss')
@@ -173,36 +150,39 @@ class AutoencoderBase(nn.Module):
         plt.show()
 
     def save(self, path: Path) -> None:
-        """
-        Save state dict and training metadata. Subclasses should extend this.
-        """
         checkpoint = {
             'state_dict': self.state_dict(),
             'epochs_trained': self.epochs_trained,
             'history': self.history,
             'run_name': self.run_name,
+            'description': self.description,
+            'batch_size': self.batch_size,
+            'learning_rate': self.lr,
         }
         torch.save(checkpoint, path)
 
     @classmethod
     def load(cls, path: Path, device=None) -> 'AutoencoderBase':
-        """
-        Load model checkpoint. Subclasses should override to restore optimizer, args, etc.
-        """
         checkpoint = torch.load(path, map_location=device or DEVICE)
-        model = cls(model_name=checkpoint['run_name'], timestamp=False)
+        model = cls(
+            model_name=checkpoint.get('run_name', 'Autoencoder'),
+            description=checkpoint.get('description', ''),
+            batch_size=checkpoint.get('batch_size', 32),
+            learning_rate=checkpoint.get('learning_rate', 1e-3),
+            timestamp=False
+        )
         model.load_state_dict(checkpoint['state_dict'])
         model.epochs_trained = checkpoint['epochs_trained']
         model.history = checkpoint['history']
         return model
-    
-    def forward(self, x):
-        x = self._ensure_batch_and_channel(x)
-        return self.decoder(self.encoder(x)).squeeze(1)
 
-    def encode(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         x = self._ensure_batch_and_channel(x)
-        return self.encoder(x)
+        return self.decoder(self.encoder(x.to(self.device))).squeeze(1)
+
+    def encode(self, x: Tensor) -> Tensor:
+        x = self._ensure_batch_and_channel(x)
+        return self.encoder(x.to(self.device))
 
     @staticmethod
     def _ensure_batch_and_channel(x: Tensor) -> Tensor:
@@ -211,4 +191,3 @@ class AutoencoderBase(nn.Module):
         if x.dim() == 2:
             return x.unsqueeze(1)
         return x
-    

@@ -23,6 +23,7 @@ from torch.nn import MSELoss
 
 from models.autoencoder.dataset_autoencoder import DatasetAutoencoder
 from models.autoencoder.architectures.flexible_autoencoder import ConvAutoencoder
+from common.config import DEVICE
 
 
 def parse_args():
@@ -105,7 +106,7 @@ def main():
         seed=args.seed,
         reduction=args.reduction,
         reduction_n=args.n
-    )
+    ).to(DEVICE)
 
     # Set up optimizer and loss criterion
     optimizer = Adam(model.parameters(), lr=args.lr)
