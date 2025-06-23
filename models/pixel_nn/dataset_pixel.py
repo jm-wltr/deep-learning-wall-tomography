@@ -186,7 +186,7 @@ class PixelDataset(Dataset):
         # Tensor shape: (66, enc_dim)
 
         # 5) Get distances for all 66 rays through pixel (y, x)
-        ray_dist = self.ray_tensors[p, :, y, x].unsqueeze(1)
+        ray_dist = self.ray_tensors[p, :, x, y].unsqueeze(1)
         # Tensor shape: (66, 1)
 
         # 6) Concatenate per-ray distance with that ray’s encoding
