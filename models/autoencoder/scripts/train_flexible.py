@@ -2,7 +2,7 @@
 Train script for ConvAutoencoder model with full configurability of data reduction and hyperparameters.
 
 Usage:
-    python -m models.autoencoder.scripts.train_flexible_autoencoder \
+    python -m models.autoencoder.scripts.train_flexible \
         --data-dir data/waveforms \
         --reduction resample --n 100 \
         --latent-dim 32 \
