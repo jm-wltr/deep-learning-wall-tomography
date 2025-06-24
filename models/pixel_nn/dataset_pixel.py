@@ -17,6 +17,9 @@ def index_to_triplet(idx: int, nX: int, nY: int):
     """
     Given a flat index, return the (sample, y, x) triplet.
     """
+    if isinstance(idx, torch.Tensor) and idx.dim() == 0:
+        idx = idx.item()
+        
     sample_idx, rem = divmod(idx, nX * nY)
     y, x = divmod(rem, nX)
     return sample_idx, y, x
@@ -41,110 +44,109 @@ class PixelDataset(Dataset):
     - Combines ray intersection data, autoencoder-compressed waveforms, and pixel spatial coordinates.
     - Targets are binary or grayscale labels from `Pmatrix`.
     """
-    def __init__(self,
-                 autoencoder,
-                 nX: int = 30,
-                 nY: int = 20,
-                 Xmin: float = None,
-                 Xmax: float = None,
-                 Ymin: float = None,
-                 Ymax: float = None,
-                 path_waveforms: Path = Path(WAVES_DIR),
-                 path_sections: Path = Path(SECTIONS_DIR),
-                 path_rays: Path = Path(RAYS_DIR),
-                 color_stone=None,
-                 color_mortar=None,
-                 interpolation=cv2.INTER_LINEAR,
-                 binarized: bool = True,
-                 skips: list = None,
-                 save_tensor: bool = True,
-                 save_path: Path = Path(BASE_DIR) / Path("artifacts/pixel_nn"),
-                 reduction: str = "resample",
-                 reduction_n: int = 200):
-        
-        # Set default values and skips if not provided
-        if color_stone is None:
-            color_stone = np.array(colors["Piedra"], dtype=np.float32)
-        if color_mortar is None:
-            color_mortar = np.array(colors["Mortero"], dtype=np.float32)
-        if skips is None:
-            skips = []
-        if Xmin is None or Xmax is None or Ymin is None or Ymax is None:
-            Xmin, Xmax, Ymin, Ymax = dims[0][0], dims[0][1], dims[1][0], dims[1][1]
-
-        self.autoencoder = autoencoder
-        self.nX = nX
-        self.nY = nY
-        self.Xmin = Xmin
-        self.Xmax = Xmax
-        self.Ymin = Ymin
-        self.Ymax = Ymax
+    def __init__(
+        self,
+        autoencoder: ConvAutoencoder,
+        nX: int = 30,
+        nY: int = 20,
+        Xmin: float = None,
+        Xmax: float = None,
+        Ymin: float = None,
+        Ymax: float = None,
+        path_waveforms: Path = Path(WAVES_DIR),
+        path_sections: Path = Path(SECTIONS_DIR),
+        path_rays: Path = Path(RAYS_DIR),
+        binarized: bool = True,
+        skips: list = [],
+        save: bool = True,
+        force_reload: bool = False,
+        reduction: str = "resample",
+        reduction_n: int = 200
+    ):
+        # assign params
+        self.autoencoder   = autoencoder
+        self.nX, self.nY   = nX, nY
+        self.binarized     = binarized
+        self.skips         = skips or []
+        self.reduction     = reduction
+        self.reduction_n   = reduction_n
+        # bounding box defaults
+        if Xmin is None or Xmax is None:
+            Xmin, Xmax = dims[0]
+        if Ymin is None or Ymax is None:
+            Ymin, Ymax = dims[1]
+        self.Xmin, self.Xmax = Xmin, Xmax
+        self.Ymin, self.Ymax = Ymin, Ymax
+        # paths
         self.path_waveforms = path_waveforms
-        self.path_sections = path_sections
-        self.path_rays = path_rays
-        self.color_stone = color_stone
-        self.color_mortar = color_mortar
-        self.interpolation = interpolation
-        self.binarized = binarized
-        self.skips = skips
-        self.save_tensor = save_tensor
-        self.reduction = reduction
-        self.reduction_n = reduction_n
+        self.path_sections  = path_sections
+        self.path_rays      = path_rays
 
-        # Encode all waveforms via autoencoder
-        wave_ds = DatasetAutoencoder(path=self.path_waveforms,
-                                     reduction=self.reduction,
-                                     n=self.reduction_n,
-                                     save=False,
-                                     force_reload=False)
-        loader = torch.utils.data.DataLoader(wave_ds, batch_size=128, shuffle=False)
-        enc_list = []
-        self.autoencoder.eval()
-        with torch.no_grad():
-            for batch in loader:
-                batch = batch.unsqueeze(1).to(DEVICE)
-                enc = self.autoencoder.encode(batch)
-                enc_list.append(enc.cpu())
-        self.encoded_waveforms = torch.cat(enc_list, dim=0)  # Shape: (num_waveforms, encoding_dim)
-        print(f"Encoded waveforms shape: {self.encoded_waveforms.shape} (num_waveforms, encoding_dim)")
+        # prepare cache
+        cache_dir = Path(BASE_DIR) / "artifacts" / "pixel_nn"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        fname = f"pixel_{getattr(autoencoder,'model_name','AE')}_{reduction}{reduction_n}_{nX}x{nY}_{'bin' if binarized else 'gray'}.pt"
+        cache_path = cache_dir / fname
 
-        # Load ray tensors for each sample
-        section_files = sorted(self.path_rays.glob("ray*.txt")) 
-        ray_list = []
-        for fpath in section_files:
-            # load_ray_tensor returns D of shape (nX, nY, num_rays=66)
-            D, _, _ = load_ray_tensor(str(fpath), self.nX, self.nY,
-                                    pad=1, include_edges=True)
-            # transpose to (num_rays, nX, nY) for PyTorch
-            ray_list.append(torch.tensor(D.transpose(2, 0, 1)))
-        self.ray_tensors = torch.stack(ray_list).float() # Shape: (num_sections=100, num_rays=66, nX, nY)
-        print(f"Ray tensors shape: {self.ray_tensors.shape} (num_samples, num_rays, nX, nY)")
+        # load or build
+        if cache_path.exists() and not force_reload:
+            payload = torch.load(cache_path)
+            self.encoded_waveforms = payload['encoded_waveforms']
+            self.ray_tensors       = payload['ray_tensors']
+            self.labels            = payload['labels']
+            self.num_sections      = payload['num_sections']
+        else:
+            # 1) encode waveforms
+            wave_ds = DatasetAutoencoder(
+                path=path_waveforms,
+                reduction=reduction,
+                n=reduction_n,
+                save=False,
+                force_reload=False
+            )
+            loader = torch.utils.data.DataLoader(wave_ds, batch_size=128, shuffle=False)
+            enc_list = []
+            autoencoder.eval()
+            with torch.no_grad():
+                for batch in loader:
+                    batch = batch.unsqueeze(1).to(DEVICE)
+                    enc = autoencoder.encode(batch)
+                    enc_list.append(enc.cpu())
+            self.encoded_waveforms = torch.cat(enc_list, dim=0)
+            print(f"Encoded waveforms with shape {self.encoded_waveforms.shape} (num_waveforms, encoding_dims)")
 
-        # Load pixel-wise labels (grayscale or binary)
-        self.filepaths, self.labels = tensor_pmatrix(
-            folder=path_sections,
-            nx=nX, ny=nY,
-            color_stone=color_stone,
-            color_mortar=color_mortar,
-            interpolation=interpolation,
-            binary=binarized,
-            skips=skips
-        )
-        self.num_samples = len(self.filepaths)
-        print(f"Loaded {self.num_samples} section files with labels shape: {self.labels.shape} (num_samples, nY, nX)")
+            # 2) load ray tensors (per section)
+            files = sorted(path_rays.glob("ray*.txt"))
+            print("Sorted files in rays")
+            ray_list = []
+            for f in files:
+                D, _, _ = load_ray_tensor(str(f), nX, nY, pad=1, include_edges=True)
+                ray_list.append(torch.tensor(D.transpose(2,0,1)))
+            self.ray_tensors = torch.stack(ray_list).float()
+            print(f"Saved ray tensors shape: {self.ray_tensors.shape} (num_sections=100, num_rays=66, nX, nY)")
 
-        if save_tensor:
-            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            ae_name = getattr(self.autoencoder, "model_name", "AE")
-            bin_flag = "bin" if self.binarized else "gray"
-            
-            filename = f"pixel_dataset_{ae_name}_{self.reduction}{self.reduction_n}_grid{self.nX}x{self.nY}_{bin_flag}_{timestamp}.pt"
-            save_path_full = save_path / filename
+            # 3) pixel labels
+            _, self.labels = tensor_pmatrix(
+                folder=path_sections,
+                nx=nX, ny=nY,
+                binary=binarized,
+                skips=skips
+            )
+            self.num_sections = len(self.labels)
+            print(f"Loaded {self.num_sections} section files with labels shape: {self.labels.shape} (num_sections, nY, nX)")
 
-            self.save(save_path_full)
+            # save if requested
+            if save:
+                torch.save({
+                    'encoded_waveforms': self.encoded_waveforms,
+                    'ray_tensors':       self.ray_tensors,
+                    'labels':            self.labels,
+                    'num_sections':      self.num_sections
+                }, cache_path)
+
 
     def __len__(self):
-        return self.num_samples * self.nX * self.nY
+        return self.num_sections * self.nX * self.nY
     
     def __getitem__(self, idx):
         """
@@ -182,7 +184,7 @@ class PixelDataset(Dataset):
 
         # 4) Extract the 66×enc_dim block corresponding to section p
         #    encoded_waveforms viewed as (num_sections, 66, enc_dim)
-        enc_block = self.encoded_waveforms.view(self.num_samples, 66, -1)[p]
+        enc_block = self.encoded_waveforms.view(self.num_sections, 66, -1)[p]
         # Tensor shape: (66, enc_dim)
 
         # 5) Get distances for all 66 rays through pixel (y, x)

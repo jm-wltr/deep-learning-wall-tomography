@@ -14,7 +14,7 @@ def separacion_dataset_supervised(dataset, train_frac=0.8, n_reserved=5, seed=No
     Split PixelDataset into train/val by pixel, with a set of n_reserved entire sections reserved for testing.
     """
     total_pixels = len(dataset)
-    n_sections = dataset.num_samples
+    n_sections = dataset.num_sections
     DIM = dataset.nX * dataset.nY
     # choose reserved section indices
     if seed is not None:

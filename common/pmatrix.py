@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import torch
 from pathlib import Path
-from .config import SECTIONS_DIR, colors
+from common.config import SECTIONS_DIR, colors
 
 # Nota: esta versión es equivalente a la de Version 2 de Pepe. he hecho cambios para claridad
 
