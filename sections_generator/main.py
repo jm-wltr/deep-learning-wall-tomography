@@ -6,8 +6,8 @@ from section import generate_cross_section
 
 # Color mappings (RGB)
 colors = {
-    "Piedra": [172, 96, 73],   # stone color
-    "Mortero": [37, 173, 221]  # mortar/background color
+    "Piedra": [75, 99, 171],   # stone color
+    "Mortero": [219, 171, 36]  # mortar/background color
 }
 # Normalize to 0-1 range
 stone_color = tuple(c/255 for c in colors["Piedra"])

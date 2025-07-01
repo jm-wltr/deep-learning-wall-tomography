@@ -39,6 +39,7 @@ def generate_cross_section(
         Xlims, Ylims, stones_raw, stones_snap
     """
     # 1) Partition the area
+    print("TS_position:", TS_position)
     Xlims, Ylims = divide_cross_section(
         X=X, Y=Y,
         n_rows=n_rows,

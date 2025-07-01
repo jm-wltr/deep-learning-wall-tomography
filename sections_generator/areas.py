@@ -62,6 +62,7 @@ def divide_cross_section(
     print()
     valid_positions = ('none','nrandom', 'random','left','center','right')
     pos = TS_position.lower()
+    print(pos)
     if pos not in valid_positions:
         raise ValueError(f"TS_position must be one of {valid_positions}, got {TS_position}")
     if pos == 'random':
