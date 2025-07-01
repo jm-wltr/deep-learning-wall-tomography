@@ -23,8 +23,8 @@ def generate_cross_section(
     max_partition_attempts: int = 10000,
     sides: int = 20,
     K: float = 0.7,         # minimum stone area fraction
-    border_thr: float = 0.01,
-    corner_thr: float = 0.0,
+    border_thr: float = 0.1,
+    corner_thr: float = 0.05,
 ) -> Tuple[
     List[List[float]],
     List[List[float]],

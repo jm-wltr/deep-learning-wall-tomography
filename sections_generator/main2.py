@@ -4,6 +4,7 @@ import random
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as MplPolygon, Rectangle
 from PIL import Image
+from shapely.geometry import Polygon as ShapelyPolygon, box
 from section import generate_cross_section  # or your actual module
 
 # Color mappings (RGB)
@@ -17,56 +18,46 @@ mortar_color = tuple(c/255 for c in colors["Mortero"])
 # Configuration for each generation mode
 MODE_CONFIGS = {
     "normal": {
-        # Section size (X, Y)
-        "size": (0.7, 0.5),
-        # generate_cross_section arguments
+        "size": (0.6, 0.4),
         "n_rows": 2,
         "min_div": 2,
-        "max_div": 3,
+        "max_div": 4,
         "min_width_frac": 0.2,
         "min_height_frac": 0.2,
         "TS_position": "center",
         "max_partition_attempts": 10000,
         "sides": 15,
         "K": 0.5,
-        # output directories
         "dxf_subdir": "sectionsNormal",
         "jpg_subdir": "imagesNormal",
     },
     "crop": {
-        # Full section dimensions
-        "full_size": (1.4, 0.5),
-        # Crop window dimensions and step
-        "crop_size": (0.7, 0.5),
+        "full_size": (1.2, 0.4),
+        "crop_size": (0.6, 0.4),
         "crop_step": 0.1,
-        # generate_cross_section arguments
         "n_rows": 2,
         "min_div": 4,
-        "max_div": 8,
-        "min_width_frac": 0.05,
+        "max_div": 7,
+        "min_width_frac": 0.1,
         "min_height_frac": 0.2,
         "TS_position": "center",
         "max_partition_attempts": 10000,
         "sides": 15,
         "K": 0.5,
-        # output directories
         "dxf_subdir": "sectionsCrop",
         "jpg_subdir": "imagesCrop",
     },
     "rotate": {
-        # Rotated section flips dimensions
-        "size": (0.5, 0.7),  # swapped from normal.crop_size
-        # generate_cross_section arguments
+        "size": (0.4, 0.6),
         "n_rows": 4,
         "min_div": 2,
         "max_div": 2,
         "min_width_frac": 0.2,
-        "min_height_frac": 0.1,
+        "min_height_frac": 0.2,
         "TS_position": "none",
         "max_partition_attempts": 10000,
         "sides": 15,
         "K": 0.5,
-        # output directories
         "dxf_subdir": "sectionsRot",
         "jpg_subdir": "imagesRotate",
     }
@@ -74,18 +65,29 @@ MODE_CONFIGS = {
 
 BASE_DIR = "sections_generator/output"
 
-def export_to_dxf(stones, out_dir, name):
+def export_to_dxf(stones, size, out_dir, name):
     os.makedirs(out_dir, exist_ok=True)
     doc = ezdxf.new("R2010", setup=True)
     msp = doc.modelspace()
+
+    # Draw bounding box
+    x_min, y_min = 0.0, 0.0
+    x_max, y_max = size
+    bbox = [(x_min, y_min), (x_min, y_max), (x_max, y_max), (x_max, y_min), (x_min, y_min)]
+    msp.add_lwpolyline(bbox, dxfattribs={"layer": "BOUNDING_BOX"})
+
+    # Draw stones
     for poly in stones:
+        if len(poly) < 2:
+            continue
         for i in range(len(poly)):
-            a = poly[i]
-            b = poly[(i+1) % len(poly)]
-            msp.add_line(a, b)
-    filepath = os.path.join(out_dir, f"{name}.dxf")
-    doc.saveas(filepath)
-    return filepath
+            p1 = poly[i]
+            p2 = poly[(i+1) % len(poly)]
+            msp.add_line(p1, p2, dxfattribs={"layer": "STONE"})
+
+    path = os.path.join(out_dir, f"{name}.dxf")
+    doc.saveas(path)
+    return path
 
 
 def export_to_jpg(stones, size, out_dir, name, xlim=None, ylim=None):
@@ -93,7 +95,6 @@ def export_to_jpg(stones, size, out_dir, name, xlim=None, ylim=None):
     width, height = size
     fig, ax = plt.subplots(figsize=(width*4, height*4))
 
-    # Determine background area
     if xlim and ylim:
         x0, x1 = xlim
         y0, y1 = ylim
@@ -116,11 +117,63 @@ def export_to_jpg(stones, size, out_dir, name, xlim=None, ylim=None):
     ax.set_aspect("equal")
     ax.axis("off")
 
-    out_path = os.path.join(out_dir, f"{name}.jpg")
+    out = os.path.join(out_dir, f"{name}.jpg")
     plt.tight_layout(pad=0)
-    fig.savefig(out_path, dpi=600)
+    fig.savefig(out, dpi=600)
     plt.close(fig)
-    return out_path
+    return out
+
+
+def process_crop(cfg, count):
+    full_size = cfg["full_size"]
+    crop_w, crop_h = cfg["crop_size"]
+    stones_full = generate_cross_section(
+        X=full_size[0], Y=full_size[1],
+        n_rows=cfg["n_rows"],
+        min_div=cfg["min_div"], max_div=cfg["max_div"],
+        min_width_frac=cfg["min_width_frac"],
+        min_height_frac=cfg["min_height_frac"],
+        TS_position=cfg["TS_position"],
+        max_partition_attempts=cfg["max_partition_attempts"],
+        sides=cfg["sides"],
+        K=cfg["K"]
+    )[-1]
+
+    # Optional: export full DXF
+    base_name = f"{count:05d}_full"
+    export_to_dxf(stones_full, full_size,
+                  os.path.join(BASE_DIR, cfg["dxf_subdir"]),
+                  base_name)
+
+    x = 0.0
+    idx = 0
+    while x <= full_size[0] - crop_w + 1e-6:
+        # Define crop window
+        crop_box = box(x, 0.0, x + crop_w, crop_h)
+        # Clip each stone polygon
+        clipped = []
+        for poly in stones_full:
+            shp = ShapelyPolygon(poly)
+            inter = shp.intersection(crop_box)
+            if not inter.is_empty:
+                if hasattr(inter, 'geoms'):
+                    for part in inter.geoms:
+                        clipped.append(list(part.exterior.coords))
+                else:
+                    clipped.append(list(inter.exterior.coords))
+
+        # Export cropped DXF and JPG
+        name = f"{count:05d}_crop{idx}"
+        export_to_dxf(clipped, (crop_w, crop_h),
+                      os.path.join(BASE_DIR, cfg["dxf_subdir"]), name)
+        export_to_jpg(clipped, (crop_w, crop_h),
+                      os.path.join(BASE_DIR, cfg["jpg_subdir"]), name,
+                      xlim=(x, x+crop_w), ylim=(0, crop_h))
+
+        x += cfg["crop_step"]
+        idx += 1
+
+    return
 
 
 def process_normal(cfg, count):
@@ -137,7 +190,7 @@ def process_normal(cfg, count):
         K=cfg["K"]
     )[-1]
     name = f"{count:05d}"
-    dxf_path = export_to_dxf(stones,
+    dxf_path = export_to_dxf(stones, (size[0], size[1]),
                               os.path.join(BASE_DIR, cfg["dxf_subdir"]),
                               name)
     jpg_path = export_to_jpg(stones, size,
@@ -145,40 +198,9 @@ def process_normal(cfg, count):
                               name)
 
 
-def process_crop(cfg, count):
-    full_size = cfg["full_size"]
-    stones_full = generate_cross_section(
-        X=full_size[0], Y=full_size[1],
-        n_rows=cfg["n_rows"],
-        min_div=cfg["min_div"], max_div=cfg["max_div"],
-        min_width_frac=cfg["min_width_frac"],
-        min_height_frac=cfg["min_height_frac"],
-        TS_position=cfg["TS_position"],
-        max_partition_attempts=cfg["max_partition_attempts"],
-        sides=cfg["sides"],
-        K=cfg["K"]
-    )[-1]
-    base_name = f"{count:05d}_full"
-    export_to_dxf(stones_full,
-                  os.path.join(BASE_DIR, cfg["dxf_subdir"]),
-                  base_name)
-
-    wx, hy = cfg["crop_size"]
-    x = 0.0
-    idx = 0
-    while x <= full_size[0] - wx + 1e-6:
-        name = f"{count:05d}_crop{idx}"
-        export_to_jpg(stones_full, cfg["crop_size"],
-                      os.path.join(BASE_DIR, cfg["jpg_subdir"]),
-                      name,
-                      xlim=(x, x+wx),
-                      ylim=(0, hy))
-        x += cfg["crop_step"]
-        idx += 1
-
 
 def process_rotate(cfg, count):
-    size = cfg["size"]
+    size = cfg["size"]  # (width, height)
     stones_r = generate_cross_section(
         X=size[0], Y=size[1],
         n_rows=random.randint(2, 4),  # Random number of rows
@@ -191,15 +213,29 @@ def process_rotate(cfg, count):
         K=cfg["K"]
     )[-1]
     name = f"{count:05d}_rot"
-    dxf_path = export_to_dxf(stones_r,
-                              os.path.join(BASE_DIR, cfg["dxf_subdir"]),
-                              name)
-    jpg_path = export_to_jpg(stones_r, size,
-                              os.path.join(BASE_DIR, cfg["jpg_subdir"]),
-                              name)
-    # Additionally save a 90° CW rotated image
-    img = Image.open(jpg_path)
-    img.rotate(-90, expand=True).save(jpg_path)
+    # Export original DXF if needed (optional)
+    # export_to_dxf(stones_r, size,
+    #               os.path.join(BASE_DIR, cfg["dxf_subdir"]), name)
+
+    # Rotate stone coordinates 90° CW around origin and swap bbox dims
+    w, h = size
+    rotated = []
+    for poly in stones_r:
+        rotated_poly = [(y, w - x) for x, y in poly]
+        rotated.append(rotated_poly)
+    # New size after rotation
+    new_size = (h, w)
+    out_dir = os.path.join(BASE_DIR, cfg["dxf_subdir"])
+    # Export rotated DXF
+    export_to_dxf(rotated, new_size, out_dir, name)
+
+    # Export JPG by rotating the saved image for consistency
+    jpg_dir = os.path.join(BASE_DIR, cfg["jpg_subdir"])
+    export_to_jpg(stones_r, size, jpg_dir, name)
+    img = Image.open(os.path.join(jpg_dir, f"{name}.jpg"))
+    img.rotate(-90, expand=True).save(os.path.join(jpg_dir, f"{name}.jpg"))
+
+
 
 
 def main():
@@ -210,10 +246,10 @@ def main():
     if cfg is None:
         raise ValueError(f"Unknown mode '{generation_mode}'")
 
-    target_count = 10  # number of sections to generate
+    target_count = 1400  # number of sections to generate
     count = 0
     attempts = 0
-    max_attempts = target_count * 20
+    max_attempts = target_count * 10
 
     while count < target_count and attempts < max_attempts:
         attempts += 1
