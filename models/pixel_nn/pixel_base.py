@@ -132,6 +132,8 @@ class PixelBase(nn.Module):
 
             # Record in TensorBoard
             self._log_metrics(epoch_loss, epoch_acc, val_loss, val_acc)
+            if self.epochs_trained % 5 == 0:
+                self.plot_reconstructions()
 
     def evaluate(self, loader, criterion) -> tuple:
         total_loss, total_corrects, count = 0.0, 0, 0
@@ -190,6 +192,12 @@ class PixelBase(nn.Module):
             'binary': self.binary
         }
         torch.save(checkpoint, path)
+        
+    def plot_reconstructions(self):
+        """
+        Placeholder: subclass should implement to plot two reserved sections.
+        """
+        raise NotImplementedError("Subclasses must implement plot_reconstructions()")
 
     @classmethod
     def load(
@@ -210,6 +218,3 @@ class PixelBase(nn.Module):
         model.epochs_trained = checkpoint['epochs_trained']
         model.history = checkpoint['history']
         return model
-
-    def forward(self, x: Tensor) -> Tensor:
-        return super().forward(x)  # implement in subclass if needed

@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Subset, ConcatDataset, random_split
+import matplotlib.pyplot as plt
+import random
 
 from common.config import DEVICE
 from ..pixel_base import PixelBase
@@ -28,7 +30,7 @@ def separacion_dataset_supervised(dataset, train_frac=0.8, n_reserved=5, seed=No
     reserved_subset = Subset(dataset, (~mask).nonzero(as_tuple=True)[0])
     remaining_subset = Subset(dataset, mask.nonzero(as_tuple=True)[0])
 
-    n_train = int(len(dataset) * train_frac)
+    n_train = int(len(remaining_subset) * train_frac)
     n_val_remain = len(remaining_subset) - n_train
     train_subset, val_remain = random_split(remaining_subset, [n_train, n_val_remain])
     val_subset = ConcatDataset([val_remain, reserved_subset])
@@ -88,7 +90,7 @@ class PixelClassifier(PixelBase):
 
         # Loss & optimizer
         self.criterion = (
-            nn.BCELoss() if binary else nn.MSELoss()
+            nn.BCELoss(reduction='sum') if binary else nn.MSELoss()
         )
         self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
 
@@ -128,3 +130,67 @@ class PixelClassifier(PixelBase):
             meta = torch.load(meta_path)
             model.reserved_sections = torch.tensor(meta['reserved'])
         return model
+
+
+    def plot_reconstructions(self):
+        # plot 5 test (reserved) and 5 random training sections, with grayscale and binarized preds
+        nX, nY = self.dataset.nX, self.dataset.nY
+        DIM = nX * nY
+
+        # determine sections
+        test_secs = self.reserved_sections.tolist()
+        all_secs = list(range(self.dataset.num_sections))
+        train_secs = [s for s in all_secs if s not in test_secs]
+        random.seed(self.epochs_trained)  # reproducibility per epoch
+        train_plot = random.sample(train_secs, min(5, len(train_secs)))
+        test_plot = test_secs[:5]
+
+        # setup figure: 6 rows (actual, gray pred, binary pred for test/train) × 5 columns
+        fig, axes = plt.subplots(6, 5, figsize=(15, 18))
+        fig.subplots_adjust(top=0.92)
+        fig.suptitle(f'Reconstructions @ epoch {self.epochs_trained}', fontsize=16, y=0.98)
+
+        def plot_block(secs, row_offset):
+            for col, sec in enumerate(secs):
+                start, end = sec * DIM, (sec + 1) * DIM
+                subset = Subset(self.dataset, list(range(start, end)))
+                loader = DataLoader(subset, batch_size=DIM, shuffle=False)
+                feats, labs = next(iter(loader))
+                feats = feats.to(self.device)
+                preds_gray = self(feats).cpu().view(nY, nX).detach()
+                preds_bin = (preds_gray > 0.5).float()
+                labs2 = labs.view(nY, nX)
+
+                # actual
+                ax_act = axes[row_offset, col]
+                ax_act.imshow(labs2, cmap='gray')
+                ax_act.axis('off')
+                if col == 0:
+                    ax_act.set_ylabel('Actual', fontsize=12, fontweight='bold')
+
+                # grayscale prediction
+                ax_gray = axes[row_offset + 1, col]
+                ax_gray.imshow(preds_gray, cmap='gray')
+                ax_gray.axis('off')
+                if col == 0:
+                    ax_gray.set_ylabel('Pred Gray', fontsize=12, fontweight='bold')
+
+                # binary prediction
+                ax_bin = axes[row_offset + 2, col]
+                ax_bin.imshow(preds_bin, cmap='gray')
+                ax_bin.axis('off')
+                if col == 0:
+                    ax_bin.set_ylabel('Pred Bin', fontsize=12, fontweight='bold')
+
+        # test block in rows 0-2
+        plot_block(test_plot, row_offset=0)
+        axes[0, 0].text(-0.5, -0.3, 'Test Sections', transform=axes[0, 0].transAxes,
+                       fontsize=14, fontweight='bold', va='top')
+        # train block in rows 3-5
+        plot_block(train_plot, row_offset=3)
+        axes[3, 0].text(-0.5, -0.3, 'Train Sections', transform=axes[3, 0].transAxes,
+                       fontsize=14, fontweight='bold', va='top')
+
+        # log to TensorBoard
+        self.writer.add_figure('Recon_Train_vs_Test', fig, self.epochs_trained)
+        plt.close(fig)
