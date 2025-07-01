@@ -1,5 +1,8 @@
 .venv/
+venv/
 .pytest_cache/
 __pycache__/
 __pycache__/
 artifacts/
+sections_generator/output/
+"Base project"/

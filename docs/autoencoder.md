@@ -16,7 +16,7 @@ With this, we can summarize our 10,000-point waveforms in 16 or 32 latent dimens
 
 We the file `autoencoder_base` to implement the base class for autoencoders. The exact layer implementation is defined in `architectures/flexible_autoencoder`, and it has parameters that let you decide the number of latent dimensions, whether to use batchnorm and dropout. The script to run it is `scripts/train_flexible`, which can be run as in the example (all parameters have reasonable defaults, see file):
 ```Usage:
-    python -m models.autoencoder.scripts.train_flexible_autoencoder \
+    python -m models.autoencoder.scripts.train_flexible \
         --data-dir data/waveforms \
         --reduction resample --n 100 \
         --latent-dim 32 \

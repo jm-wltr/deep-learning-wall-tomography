@@ -1,5 +1,6 @@
 import os
 import torch
+import numpy as np
 
 # Paths
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -24,3 +25,9 @@ colors = {
     "Piedra": [172, 96, 73],
     "Mortero": [37, 173, 221]
 }
+
+# Emitter and receiver positions
+emitter_X_positions = np.linspace(0.05, 0.55, 6)  # 6 points → 6 values
+emitter_R_positions = np.linspace(0.05, 0.55, 11) # 11 points → 11 values
+emitter_YE: float = 0.4
+emitter_YR: float = 0.0

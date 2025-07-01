@@ -1,0 +1,2 @@
+from .architectures.pixel_arch1 import separacion_dataset_supervised, PixelClassifier
+from .dataset_pixel import PixelDataset

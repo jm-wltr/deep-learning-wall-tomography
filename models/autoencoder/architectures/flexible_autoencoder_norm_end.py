@@ -9,9 +9,9 @@ from ..dataset_autoencoder import DatasetAutoencoder
 from ..utils import split_dataset
 from common.config import DEVICE
 
-class ConvAutoencoder(AutoencoderBase):
+class ConvAutoencoderNormEnd(AutoencoderBase):
     """
-    1D Convolutional Autoencoder with dynamic naming and description.
+    1D Convolutional Autoencoder with dynamic naming and description. This one has a BatchNorm1d layer at the end.
     """
     def __init__(
         self,
@@ -62,7 +62,13 @@ class ConvAutoencoder(AutoencoderBase):
             enc_layers.append(nn.ELU())
             if dropout > 0: enc_layers.append(nn.Dropout(dropout))
         enc_layers.append(nn.Flatten())
-        enc_layers.extend([nn.Linear(flat_size, 1024), nn.ELU()] + ([nn.Dropout(dropout)] if dropout>0 else []) + [nn.Linear(1024, latent_dim)])
+        enc_layers.extend([
+            nn.Linear(flat_size, 1024),
+            nn.ELU(),
+        ] + ([nn.Dropout(dropout)] if dropout>0 else []) + [
+            nn.Linear(1024, latent_dim),
+            nn.BatchNorm1d(latent_dim),    # ← new: normalize the bottleneck
+        ])
         self.encoder = nn.Sequential(*enc_layers)
 
         # Build decoder
@@ -78,7 +84,7 @@ class ConvAutoencoder(AutoencoderBase):
 
     @staticmethod
     def _build_name(latent_dim, dropout, use_batchnorm, reduction, reduction_n):
-        parts = ["ConvAE"] + ([f"{reduction}{reduction_n}"] if reduction else []) + [f"lat{latent_dim}"] + ([f"do{int(dropout*100)}"] if dropout>0 else []) + (["bn"] if use_batchnorm else [])
+        parts = ["ConvAENormEnd"] + ([f"{reduction}{reduction_n}"] if reduction else []) + [f"lat{latent_dim}"] + ([f"do{int(dropout*100)}"] if dropout>0 else []) + (["bn"] if use_batchnorm else [])
         return "_".join(parts)
 
     @staticmethod
@@ -107,7 +113,7 @@ class ConvAutoencoder(AutoencoderBase):
         torch.save(checkpoint, path)
 
     @classmethod
-    def load(cls, path: Path, dataset, device=None) -> 'ConvAutoencoder':
+    def load(cls, path: Path, dataset, device=None) -> 'ConvAutoencoderNormEnd':
         checkpoint = torch.load(path, map_location=device or DEVICE)
         model = cls(
             dataset=dataset,
