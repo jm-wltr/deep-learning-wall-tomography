@@ -33,7 +33,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 
 # 3. Pip install requirements
-pip install opencv-python numpy matplotlib jupyterlab ipykernel pandas scipy
+pip install opencv-python numpy matplotlib jupyterlab ipykernel pandas scipy ezdxf
 pip install torch --index-url https://download.pytorch.org/whl/cu118
 pip install tensorboard
 
