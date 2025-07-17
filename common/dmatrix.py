@@ -1,7 +1,7 @@
 import warnings
 import numpy as np
 import pandas as pd
-from .config import dims
+from .config import dims, emitter_R_positions, emitter_X_positions, emitter_YE, emitter_YR
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -97,32 +97,23 @@ def ray_distance_matrix(p0: np.ndarray, p1: np.ndarray,
     return np.array(lengths).reshape(shape)
 
 
-def load_ray_tensor(filepath: str,
-                    nx: int, ny: int, nz: int=0,
-                    pad: int=1, include_edges: bool=True) -> tuple:
+def load_ray_tensor(nx: int, ny: int, nz: int = 0,
+                    pad: int = 1, include_edges: bool = True) -> tuple:
     """
-    Load ray data and build a tensor with intersection distances.
-
-    Parameters:
-    - filepath: path to the ray data file (.txt)
-    - nx, ny, nz: number of voxels along each axis
-    - pad, include_edges: voxel masking options
+    Generate the ray distance tensor for fixed, predefined emitter/receiver positions.
 
     Returns:
-    - D: ndarray of shape (nx, ny [, nz], num_rays) = distance matrix
-    - params: DataFrame with ['Velocity', 'Amplitude', 'Frequency']
+    - D: ndarray of shape (nx, ny [, nz], num_rays)
     - dims: bounding box array [[xmin,xmax],[ymin,ymax],[zmin,zmax]]
     """
-    df = pd.read_csv(filepath, sep='\t', names=COLUMNS)
-    params = df[['Velocity','Amplitude','Frequency']]
-
     matrices = []
-    for _, row in df.iterrows():
-        p0 = row[['Xe','Ye','Ze']].values
-        p1 = row[['Xr','Yr','Zr']].values
-        matrices.append(
-            ray_distance_matrix(p0, p1, nx, ny, nz, pad, include_edges)
-        )
+    for xe in emitter_X_positions:
+        for xr in emitter_R_positions:
+            p0 = np.array([xe, emitter_YE, 0.0])
+            p1 = np.array([xr, emitter_YR, 0.0])
+            matrices.append(
+                ray_distance_matrix(p0, p1, nx, ny, nz, pad, include_edges)
+            )
 
     D = np.stack(matrices, axis=-1)
-    return D, params, np.array(dims)
+    return D, np.array(dims)

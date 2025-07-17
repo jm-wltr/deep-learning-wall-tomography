@@ -139,42 +139,59 @@ def divide_cross_section(
             Ylimits_rows.append([h]*len(widths))
         return Xlimits_rows, Ylimits_rows
 
-    # --------------------- CENTER TS ---------------------
-    # decide subdivisions on top row
+     # --------------------- CENTER TS ---------------------
     if max_div < 3:
         raise ValueError("For center TS, max_div must be at least 3 to allow for left and right subdivisions")
-    
-    if min_div < 3:
-        total_cols_top = random.randint(3, max_div)
-    else:
-        total_cols_top = random.randint(min_div, max_div)
-        
-    left_top = random.randint(1, max(total_cols_top - 2, 1))
+    # ensure top stripe has room for two sides + TS
+    min_top = max(3, min_div)
+    total_cols_top = random.randint(min_top, max_div)
+    left_top  = random.randint(1, total_cols_top - 2)
     right_top = total_cols_top - left_top - 1
     top_widths = random_partition(X, total_cols_top, min_width_frac, max_TS_frac, max_partition_attempts)
-    # extract TS and side remainders
+    
     ts_index = left_top
-    ts_width = top_widths[ts_index]
-    left_rem = sum(top_widths[:ts_index])
+    ts_width  = top_widths[ts_index]
+    left_rem  = sum(top_widths[:ts_index])
     right_rem = sum(top_widths[ts_index+1:])
+    
     Xlimits_rows.append(top_widths)
-    Ylimits_rows.append([stripe_heights[0]]*total_cols_top)
+    Ylimits_rows.append([stripe_heights[0]] * total_cols_top)
 
     # remaining stripes
     for h in stripe_heights[1:]:
-        # decide subdivisions excluding TS
-        max_left_sub = min(max_div - 2, int(left_rem // (min_width_frac * X)))
+        # compute side‐region max counts based on width & min frac
+        max_left_sub  = min(max_div - 2, int(left_rem  // (min_width_frac * X)))
         max_right_sub = min(max_div - 2, int(right_rem // (min_width_frac * X)))
-        left_sub  = random.randint(1, max_left_sub)
-        right_sub = random.randint(1, max_right_sub)
 
-        # partition each remainder exactly as before
-        left_parts  = random_partition(left_rem,  left_sub,  min_width_frac * X / left_rem, 1.0, max_partition_attempts)
-        right_parts = random_partition(right_rem, right_sub, min_width_frac * X / right_rem, 1.0, max_partition_attempts)
+        # build all valid (l, r) so total columns stays within [min_div, max_div]
+        valid_pairs = [
+            (l, r)
+            for l in range(1, max_left_sub+1)
+            for r in range(1, max_right_sub+1)
+            if min_div - 1 <= l + r <= max_div - 1
+        ]
+        if not valid_pairs:
+            raise ValueError(
+                f"No valid subdivisions on stripe height {h:.3f}: "
+                f"left_rem={left_rem:.3f}, right_rem={right_rem:.3f}, "
+                f"max_left_sub={max_left_sub}, max_right_sub={max_right_sub}"
+            )
+
+        left_sub, right_sub = random.choice(valid_pairs)
+
+        # partition each side‐region
+        left_parts  = random_partition(
+            left_rem,  left_sub,
+            min_width_frac * X / left_rem, 1.0, max_partition_attempts
+        )
+        right_parts = random_partition(
+            right_rem, right_sub,
+            min_width_frac * X / right_rem, 1.0, max_partition_attempts
+        )
 
         widths = left_parts + [ts_width] + right_parts
         Xlimits_rows.append(widths)
-        Ylimits_rows.append([h]*len(widths))
+        Ylimits_rows.append([h] * len(widths))
 
     return Xlimits_rows, Ylimits_rows
 
@@ -182,7 +199,7 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
     # Parameters
-    X, Y = 0.7, 0.5
+    X, Y = 0.06, 0.04
     n_rows = 2
     min_div, max_div = 2, 4
     min_width_frac = 0.1    # no cell narrower than 20% of X

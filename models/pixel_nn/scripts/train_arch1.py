@@ -7,7 +7,7 @@ from torch.optim import Adam
 
 from models.autoencoder import DatasetAutoencoder, ConvAutoencoder, ConvAutoencoderNormEnd
 from models.pixel_nn import PixelDataset, PixelClassifier
-from common.config import DEVICE, BASE_DIR, WAVES_DIR, RAYS_DIR, SECTIONS_DIR
+from common.config import DEVICE, BASE_DIR, WAVES_DIR, SECTIONS_DIR
 
 
 def parse_args():
@@ -31,10 +31,6 @@ def parse_args():
     parser.add_argument(
         "--sections-dir", type=Path, default=Path(SECTIONS_DIR),
         help="Directory containing cross-section images"
-    )
-    parser.add_argument(
-        "--rays-dir", type=Path, default=Path(RAYS_DIR),
-        help="Directory containing ray-distance .txt files"
     )
     parser.add_argument(
         "--nX", type=int, default=30,
@@ -106,7 +102,6 @@ def main():
         nY=args.nY,
         path_waveforms=args.waveforms_dir,
         path_sections=args.sections_dir,
-        path_rays=args.rays_dir,
         binarized=args.binarized,
         save=True,
         reduction=args.ae_reduction,

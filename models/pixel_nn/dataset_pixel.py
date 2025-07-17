@@ -13,7 +13,7 @@ from common.dmatrix import load_ray_tensor
 from models.autoencoder import ConvAutoencoder, DatasetAutoencoder, ConvAutoencoderNormEnd
 
 
-def index_to_triplet(idx: int, nX: int, nY: int):
+def index_to_triplet(idx: int, nX: int = 30, nY: int = 20):
     """
     Given a flat index, return (section, y, x).
     """
@@ -54,19 +54,18 @@ class PixelDataset(Dataset):
         autoencoder: ConvAutoencoderNormEnd,
         nX: int = 30,
         nY: int = 20,
-        Xmin: float = None,
-        Xmax: float = None,
-        Ymin: float = None,
-        Ymax: float = None,
+        Xmin: float = 0,
+        Xmax: float = 0.6,
+        Ymin: float = 0,
+        Ymax: float = 0.4,
         path_waveforms: Path = Path(WAVES_DIR),
         path_sections: Path = Path(SECTIONS_DIR),
-        path_rays: Path = Path(RAYS_DIR),
         binarized: bool = True,
         skips: list = [],
         save: bool = True,
         force_reload: bool = False,
         reduction: str = "resample",
-        reduction_n: int = 200,
+        reduction_n: int = 150,
     ):
         # assign params
         self.autoencoder   = autoencoder
@@ -93,7 +92,7 @@ class PixelDataset(Dataset):
         if cache_path.exists() and not force_reload:
             payload = torch.load(cache_path)
             self.encoded_waveforms = payload['encoded_waveforms']  # shape (num_sections*66, E)
-            self.ray_tensors       = payload['ray_tensors']        # shape (num_sections, 66, nX, nY)
+            self.ray_tensors       = payload['ray_tensors']        # shape (num_sections, 66, nX, nY), D matrices
             self.labels            = payload['labels']             # shape (num_sections, nY, nX)
             self.posiciones        = payload['posiciones']         # shape (66, 4)
             self.num_sections      = payload['num_sections']
@@ -120,19 +119,32 @@ class PixelDataset(Dataset):
             self.encoded_waveforms = torch.cat(enc_list, dim=0) # → final shape: (num_sections*66, E)
 
             print(f"Encoded waveforms with shape {self.encoded_waveforms.shape} (num_waveforms, encoding_dims)")
-
-            # 2) load ray tensors (per section)
-            files = sorted(path_rays.glob("ray*.txt"))
-            print("Sorted files in rays")
-            ray_list = []
-            for f in files:
-                D, _, _ = load_ray_tensor(str(f), nX, nY, pad=1, include_edges=True)
-                ray_list.append(torch.tensor(D.transpose(2,0,1)))
-            self.ray_tensors = torch.stack(ray_list).float()
-            print(f"Saved ray tensors shape: {self.ray_tensors.shape} (num_sections=100, num_rays=66, nX, nY)")
             
-            # 3) Precompute emitter positions → (66,4)
-            #    use torch.cartesian_prod on 1D tensors
+            
+            # 2) Generate ray tensor once (geometry is fixed)
+            D_np, _ = load_ray_tensor(self.nX, self.nY, nz=0, pad=1, include_edges=True)
+            # D_np.shape = (nX, nY, 66)
+            D_single = torch.tensor(D_np.transpose(2, 0, 1), dtype=torch.float32)  # (66, nX, nY)
+
+            # 3) Load section labels
+            files, labels = tensor_pmatrix(
+                folder=path_sections,
+                nx=nX,
+                ny=nY,
+                binary=binarized,
+                skips=self.skips
+            )
+            print(f"Loaded {len(files)} section labels from {path_sections}: {files}")
+            self.labels = labels  # (num_sections, nY, nX)
+            print(f"Loaded section labels with shape {self.labels.shape} (num_sections, nY, nX)")
+            self.num_sections = len(labels)
+
+            # 4) Expand ray tensor per section
+            # Shape -> (num_sections, 66, nX, nY)
+            self.ray_tensors = D_single.unsqueeze(0).repeat(self.num_sections, 1, 1, 1) # (self.num_sections, 66, nX, nY)
+            print(f"Generated ray tensors with shape {self.ray_tensors.shape} (num_sections, 66, nX, nY)")
+            
+            # 5) Precompute emitter positions → (66,4)
             x_tensor = torch.from_numpy(emitter_X_positions.astype(np.float32))  # (6,)
             r_tensor = torch.from_numpy(emitter_R_positions.astype(np.float32))  # (11,)
             grid = torch.cartesian_prod(x_tensor, r_tensor)                    # (66,2)
@@ -140,16 +152,6 @@ class PixelDataset(Dataset):
             YR = torch.full((grid.size(0),1), float(emitter_YR), dtype=torch.float32)  # (66,1)
             self.posiciones = torch.cat([grid, YE, YR], dim=1)                   # (66,4)
             print(f"Saved emitter/receptor positions tensor shape: {self.posiciones.shape} (66, 4)")
-
-            # 4) pixel labels
-            _, self.labels = tensor_pmatrix(
-                folder=path_sections,
-                nx=nX, ny=nY,
-                binary=binarized,
-                skips=skips
-            )
-            self.num_sections = len(self.labels)
-            print(f"Loaded {self.num_sections} section files with labels shape: {self.labels.shape} (num_sections, nY, nX)")
 
             # save if requested
             if save:
@@ -201,6 +203,8 @@ class PixelDataset(Dataset):
         return features, label
 
 
+### For each pixel, we get a vector with the four cordinates of the pixel (X0, Y0, X1, Y1) followed by information for each of the rays: 
+# emitter and receiver positions (xE, xR, yE, yR), ray distance through pixel, and the autoencoder encoding.
 
     # ALTERNATIVE IMPLEMENTATION I WILL HAVE TO TRY LATER
     # def __getitem__(self, idx):
