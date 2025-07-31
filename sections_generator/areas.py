@@ -9,6 +9,10 @@ def random_partition(total, count, min_frac=0.0, max_frac=1.0, max_attempts=1000
     The segments sum exactly to `total`.
 
     Raises ValueError if constraints cannot be satisfied.
+        
+    Returns:
+        List[float]: A list of `count` float values summing to `total`, 
+        each within the specified fraction range.
     """
     # Validate fraction constraints
     if not (0 <= min_frac <= max_frac <= 1):
@@ -38,7 +42,7 @@ def divide_cross_section(
     min_width_frac=0.2,
     min_height_frac=0.2,
     TS_position='nrandom',
-    max_partition_attempts=100000,
+    max_partition_attempts=100000
 ):
     """
     Divide a rectangle of width X and height Y into horizontal stripes,
