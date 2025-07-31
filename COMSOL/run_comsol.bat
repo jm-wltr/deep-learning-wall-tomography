@@ -15,7 +15,7 @@ cd /d %WORK_DIR%
 
 REM 3) Loop over folders
 setlocal enabledelayedexpansion
-set START_INDEX=47
+set START_INDEX=0
 set END_INDEX=124
 for /L %%i in (%START_INDEX%,1,%END_INDEX%) do (
     REM Zero-pad index to 5 digits

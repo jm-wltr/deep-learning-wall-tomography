@@ -1,9 +1,9 @@
 /*
  * Refactored COMSOL model for wall tomography simulation
  * Compile with command:
- * & "C:\Program Files\COMSOL\COMSOL60\Multiphysics\bin\win64\comsolcompile.exe" ` "C:\Users\Jaime\Documents\deep-learning-wall-tomography\COMSOL\Refactored.java"
+ * & "C:\Program Files\COMSOL\COMSOL60\Multiphysics\bin\win64\comsolcompile.exe" ` "C:\Users\Jaime\Documents\deep-learning-wall-tomography\COMSOL\Simulation.java"
  * Run with command:
- * comsolbatch -inputfile "C:\Users\Jaime\Documents\deep-learning-wall-tomography\COMSOL\Automated2.class"  -nosave
+ * comsolbatch -inputfile "C:\Users\Jaime\Documents\deep-learning-wall-tomography\COMSOL\Simulation.class"  -nosave
  */
 
 import com.comsol.model.*;
