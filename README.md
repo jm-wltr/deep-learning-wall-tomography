@@ -1,25 +1,27 @@
 # Sonic Tomography with Deep Learning
 
-This project explores the use of deep learning to reconstruct the internal structure of masonry walls using acoustic tomography data. Instead of relying on classical algebraic reconstruction techniques, we aim to train neural networks directly on wave propagation signals generated via simulation and measurement. The previous version of the project I am building on can be found [here](https://saco.csic.es/s/k5ty8eazD85pd4M).
+This project explores the use of deep learning to reconstruct the internal structure of masonry walls using acoustic tomography data. Instead of relying on classical algebraic reconstruction techniques, we aim to train neural networks directly on wave propagation signals generated via simulation and measurement. The previous version of the project I am building on can be found [here](https://saco.csic.es/s/k5ty8eazD85pd4M). This repository contains the files related to both the simulations and the neural networks, as well as a pregenerated small sample dataset for trying out the neural network.
 
 ## 📁 Repository Structure
 ```
+├── artifacts  # PyTorch logs, datasets, and models
 ├── common/ # Shared utilities and data loaders
+├── COMSOL/ # Physical simulation files
+├── data/
+├── docs/ # Detailed documentation
 ├── models/ 
 │ └── autoencoder/ # Autoencoder dataset & architectures
-├── notebooks/ # Exploratory analyses and demos
-├── data/ # Raw and preprocessed data
-│ ├── waveforms/ # Y-displacement waveforms from COMSOL
-│ ├── rays/ # Ray path metadata (rayXX.txt)
-│ └── sections/ # Wall cross-section images (XX.jpg)
-├── artifacts/ # Generated intermediate files (e.g. AE .pt)
+│ └── pixel_nn/ # Pixel-by-pixel neural network dataset & architectures
 ├── results/ # Model outputs, figures
-├── docs/ # Documentation
+├── sections_generator/ # Code to generate random wall cross-sections (jpeg and stl)
+├── .gitignore
 ├── README.md # This file
 ```
 
-## Understanding the codebase
-The data we are working with was obtained via a COMSOL Multiphysics simulation. It is documented in [`docs/data.md`](docs/data.md). We pass the data through an Autoencoder and then another neural network to predict a tomography. For now I have implemented the Autoencoder, which is meant to compress waves with 10,000 points to a latent space of 16 or 32 points. Information about how it works, how to train it, and how to visualize its results is in [docs\autoencoder.md](docs\autoencoder.md). For the neural network itself, we already have the code to produce the 'ground truth' tomography images we want the model to predict based on waves, as well as for the DMatrix, which might help to correlate specific waves to specific pixels it might impact more in the neural network. This is all illustrated in [notebooks\matrices_demo.ipynb](notebooks\matrices_demo.ipynb). Finally, we have a few tests, just for dmatrix and pmatrix, and these are concisely explained in [docs/tests.md](docs/tests.md).
+## Understanding the project
+The workflow consists of [(1)](docs/sections_generator.md) generating random wall cross sections, [(2)](docs/comsol.md) generating simulated wave data through the cross sections via COMSOL, [(3)](docs/autoencoder.md) training an autoencoder to compress the waveforms to a small number of values, and [(4)](docs/pixel_nn.md) training the neural network that predicts the cross section image based off of the autoencoded waveforms.
+
+Each of these sections is documented in detail in separate files in the `docs` folder.
 
 ## Instructions
 

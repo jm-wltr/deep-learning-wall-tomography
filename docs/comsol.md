@@ -1,6 +1,6 @@
 # COMSOL Simulations
 
-The data we use for the neural network is obtained via physical simulations of sending waves through different wall structures generated randomly.
+The data we use for the neural network is obtained via physical simulations of sending waves through different wall structures generated randomly. All the files related to COMSOL are located in the `COMSOL` folder.
 
 
 THIS IS THE SCRIPT USEFUL TO MODIFY FOR TRANSFERING FILES:
