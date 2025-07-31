@@ -1,26 +1,3 @@
-# COMSOL Simulations
-
-[Back to README.md](../README.md)
-
-The data we use for the neural network is obtained via physical simulations of sending waves through different wall structures generated randomly. All the files related to COMSOL are located in the `COMSOL` folder. 
-
-This simulation builds a three-dimensional mortar block studded with arbitrarily shaped “stone” inclusions (imported from STL files), then uses time-dependent solid-mechanics to model how a Gaussian-modulated ultrasonic pulse propagates through the composite and is recorded at discrete receiver points. We do this for 6 emission points located along a face of the block, and 11 reception points located along the opposite face. The script exports a file for each emitter (called `PL0.txt` to `PL5.txt`), each with a column for each receptor over time.
-
-## Instructions
-The main file is `Simulation.java`, which uses the COMSOL API to define a simulation model using all the STL files directly inside whichever directory is written in `basedir.txt` (which is supposed to include all the STL files corresponding to a specific wall cross section). This Java code must be compiled using `& "C:\Program Files\COMSOL\COMSOL60\Multiphysics\bin\win64\comsolcompile.exe" "COMSOL\Simulation.java"` (substitute with the directories of comsolcompile and the Java file in your computer). This will generate a `Simulation.class` file, which essentially acts as an MPH file (the normal COMSOL filetype), except it just defines the model but does not store the results. You can open this file with COMSOL Multiphysics or execute it from the terminal using the command `"C:\Program Files\COMSOL\COMSOL60\Multiphysics\bin\win64\comsolbatch.exe" -inputfile "COMSOL\Simulation.class"  -nosave` (substitute with your actual directories). Removing the `-nosave` parameter will export an MPH file with the results. Finally, the script `run_comsol.bat` iterates over a directory including the different cross section folders, and for each one updates `basedir.txt` and immediately compiles and runs the simulation. 
-
-Less importantly, the `oldFiles` folder includes `New.mph`, which is the original model I manually designed for a specific wall cross section before automation; and `Refactored.java` which is the (non-automated) Java file exported automatically by COMSOL from `New.mph` after manually reorganizing it and adding comments.
-
-
-
-
-
-
-
-
-
-
-
 ## COMSOL Simulations
 
 [Back to README.md](../README.md)
