@@ -2,7 +2,7 @@
 
 [Back to README.md](../README.md)
 
-Under `sections_generator` we have separate files that help us generate random wall cross sections for our project. We implement three alternative generation methods, all of which export jpg images (used as ground truth in our models), stl files for each stone in the wall (for importing into COMSOL and running physical simulations), and dxf files (used previously for 2D simulations, but now deprecated).
+Under `sections_generator` we have separate files that help us generate random wall cross sections for our project. We implement three alternative generation methods, all of which export jpg images (used as ground truth in our models), stl files for each stone in the wall (for importing into COMSOL and running physical simulations), and dxf files (used previously for 2D simulations, but now deprecated). You can use this part of the code by running the `main.py` file, which will save its results in `sections_generator/output`.
 
 ## Files
 

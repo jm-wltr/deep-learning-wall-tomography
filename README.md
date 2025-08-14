@@ -38,9 +38,9 @@ Aditionally,
 
 ## Instructions
 
-It is best to run this code with NVIDIA GPU. In this case you will need a Python version between 3.9-3.12 so that Torch is compatible with cuda. Otherwise, it will run on CPU. For optimal compatibility, I have been using Python 3.10.11.
+It is best to run this code with NVIDIA GPU. In this case you will need a Python version between 3.9-3.12 so that Torch is compatible with cuda (GPU). Otherwise, it will run on CPU. For optimal compatibility, I have been using Python 3.10.11.
 ```
-# 1. Create a venv folder named “.venv”
+# 1. Create a Python virtual environment called “.venv”
 py -3.10 -m venv .venv
 
 # 2. Activate it
