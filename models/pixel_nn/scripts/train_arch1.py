@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 
-from models.autoencoder import DatasetAutoencoder, ConvAutoencoder, ConvAutoencoderNormEnd
+from models.autoencoder import DatasetAutoencoder, ConvAutoencoder, ConvAutoencoder
 from models.pixel_nn import PixelDataset, PixelClassifier
 from common.config import DEVICE, BASE_DIR, WAVES_DIR, SECTIONS_DIR
 
@@ -87,7 +87,7 @@ def main():
         save=False,
         force_reload=False
     )
-    autoencoder = ConvAutoencoderNormEnd.load(
+    autoencoder = ConvAutoencoder.load(
         path=args.ae_ckpt,
         dataset=ae_dataset,
         device=DEVICE

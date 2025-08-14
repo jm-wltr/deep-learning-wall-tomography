@@ -10,7 +10,7 @@ from common.config import *
 from common.pmatrix import tensor_pmatrix
 from common.waveforms import load_all_waveforms
 from common.dmatrix import load_ray_tensor
-from models.autoencoder import ConvAutoencoder, DatasetAutoencoder, ConvAutoencoderNormEnd
+from models.autoencoder import ConvAutoencoder, DatasetAutoencoder, ConvAutoencoder
 
 
 def index_to_triplet(idx: int, nX: int = 30, nY: int = 20):
@@ -51,7 +51,7 @@ class PixelDataset(Dataset):
     """
     def __init__(
         self,
-        autoencoder: ConvAutoencoderNormEnd,
+        autoencoder: ConvAutoencoder,
         nX: int = 30,
         nY: int = 20,
         Xmin: float = 0,

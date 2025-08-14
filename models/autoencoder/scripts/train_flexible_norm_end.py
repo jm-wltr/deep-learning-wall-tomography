@@ -22,7 +22,7 @@ from torch.optim import Adam
 from torch.nn import MSELoss
 
 from models.autoencoder.dataset_autoencoder import DatasetAutoencoder
-from models.autoencoder.architectures.flexible_autoencoder_norm_end import ConvAutoencoderNormEnd
+from models.autoencoder.architectures.flexible_autoencoder import ConvAutoencoder
 from common.config import DEVICE
 
 
@@ -98,7 +98,7 @@ def main():
     print(dataset[0:100].flatten().mean())
 
     # Instantiate ConvAutoencoder with provided hyperparameters
-    model = ConvAutoencoderNormEnd(
+    model = ConvAutoencoder(
         dataset=dataset,
         latent_dim=args.latent_dim,
         dropout=args.dropout,

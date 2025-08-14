@@ -1,4 +1,6 @@
-# Autoencoder Module
+# Autoencoder for Waveforms
+
+[Back to README.md](../README.md)
 
 This document provides a concise explanation of the autoencoder implementation (located in `models/autoencoder`).
 
@@ -14,7 +16,7 @@ With this, we can summarize our 10,000-point waveforms in 16 or 32 latent dimens
 
 ## 2. Directory Structure
 
-The file `autoencoder_base` implements the base class for autoencoders (including training, logging, evaluating, saving and loading). The exact layer implementation is defined in `architectures/flexible_autoencoder`, and it has parameters that let you decide the number of latent dimensions, whether to use batchnorm and dropout. The script to run it is `scripts/train_flexible`, which can be run as in the example (all parameters have reasonable defaults, see file):
+The file `dataset_autoencoder.py` implements a PyTorch dataset class that with which we wrap the data for the training process to be able to access it. The file `autoencoder_base.py` implements the base class for autoencoders (including training, logging, evaluating, saving and loading). The exact layer implementation is defined in `architectures/flexible_autoencoder`, and it has parameters that let you decide the number of latent dimensions, whether to use batchnorm and dropout... The script to run it is `scripts/train_flexible`, which can be run in the console as in the example (all parameters have reasonable defaults, see file):
 ```Usage:
     python -m models.autoencoder.scripts.train_flexible \
         --data-dir data/waveforms \
