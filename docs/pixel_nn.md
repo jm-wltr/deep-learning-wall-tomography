@@ -8,7 +8,7 @@ The file `dataset_pixel.py` implements a PyTorch dataset class that with which w
 
 The file `pixel_base.py` implements the base class for autoencoders (including training, logging, evaluating, saving and loading). The exact layer implementation is defined in `architectures/pixel_arch1`. The script to run it is `scripts/train_arch1`, which can be run in the console as in the example (all parameters have reasonable defaults, see file):
 ```Usage:
-    python -m models.autoencoder.scripts.train_arch1 \
+    python -m models.pixel_nn.scripts.train_arch1 \
         --ae-ckpt "C:\Users\jaime\S-RAY\deep-learning-wall-tomography\artifacts\autoencoder\checkpoints\ConvAENormEnd_resample150_lat32_do10_bn_2025-07-16_11-46-10.pt" \
         --epochs 400  \
         --seed 42
