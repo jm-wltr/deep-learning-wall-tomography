@@ -34,8 +34,6 @@ The project follows a four-step workflow, with each step documented in detail in
 4. **[Cross-Section Prediction](docs/pixel_nn.md)**  
    A second neural network is trained to predict the wall cross-section image from the compressed waveforms.
 
-Aditionally, 
-
 ## Instructions
 
 It is best to run this code with NVIDIA GPU. In this case you will need a Python version between 3.9-3.12 so that Torch is compatible with cuda (GPU). Otherwise, it will run on CPU. For optimal compatibility, I have been using Python 3.10.11.
