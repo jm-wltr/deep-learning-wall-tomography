@@ -109,3 +109,73 @@ $j = 124
     }
 }
 ```
+
+Then you will have to manually check (this can be automated) if any text files are empty (which happens every now and then for some reason) and delete those files and their corresponding image and stl. Then run this script to rename all the files so that there are no skips in the numbering. 
+
+```
+# Set paths
+$root     = "C:\Users\jaime\S-RAY\deep-learning-wall-tomography\data"
+$sections = Join-Path $root "sections"
+$waveforms= Join-Path $root "waveforms"
+$stls     = Join-Path $root "stls"
+
+# Collect numeric IDs (union), keep order by sorting numerically
+$ids = @()
+$ids += Get-ChildItem $sections  -Filter *.jpg    | Where-Object { $_.BaseName -match '^\d+$' } | ForEach-Object { [int]$_.BaseName }
+$ids += Get-ChildItem $waveforms -Directory       | Where-Object { $_.Name     -match '^\d+$' } | ForEach-Object { [int]$_.Name }
+$ids += Get-ChildItem $stls      -Directory       | Where-Object { $_.Name     -match '^\d+$' } | ForEach-Object { [int]$_.Name }
+$ids = $ids | Sort-Object -Unique
+
+# Unique session prefix for temp names (prevents any collision with existing __tmp__ stuff)
+$prefix = "__reindex_" + ([guid]::NewGuid().ToString("N").Substring(0,8)) + "__"
+
+# Pass 1: rename to guaranteed-unique temp names
+for ($i=0; $i -lt $ids.Count; $i++) {
+  $old = "{0:D5}" -f $ids[$i]
+  $new = "{0:D5}" -f $i
+  if ($old -eq $new) { continue }  # avoid "source and destination path must be different"
+
+  # sections file
+  $oldFile = Join-Path $sections "$old.jpg"
+  if (Test-Path $oldFile) {
+    $tmpName = "$prefix$new.jpg"
+    Rename-Item -LiteralPath $oldFile -NewName $tmpName
+  }
+
+  # waveforms dir
+  $oldWF = Join-Path $waveforms $old
+  if (Test-Path $oldWF) {
+    $tmpName = "$prefix$new"
+    Rename-Item -LiteralPath $oldWF -NewName $tmpName
+  }
+
+  # stls dir
+  $oldSTL = Join-Path $stls $old
+  if (Test-Path $oldSTL) {
+    $tmpName = "$prefix$new"
+    Rename-Item -LiteralPath $oldSTL -NewName $tmpName
+  }
+}
+
+# Pass 2: convert temp names to final contiguous IDs
+# sections
+Get-ChildItem $sections -Filter "$prefix*.jpg" | ForEach-Object {
+  if ($_.BaseName -match "^$([regex]::Escape($prefix))(\d{5})$") {
+    Rename-Item -LiteralPath $_.FullName -NewName ("{0}.jpg" -f $Matches[1])
+  }
+}
+# waveforms
+Get-ChildItem $waveforms -Directory | Where-Object { $_.Name -like "$prefix*" } | ForEach-Object {
+  if ($_.Name -match "^$([regex]::Escape($prefix))(\d{5})$") {
+    Rename-Item -LiteralPath $_.FullName -NewName $Matches[1]
+  }
+}
+# stls
+Get-ChildItem $stls -Directory | Where-Object { $_.Name -like "$prefix*" } | ForEach-Object {
+  if ($_.Name -match "^$([regex]::Escape($prefix))(\d{5})$") {
+    Rename-Item -LiteralPath $_.FullName -NewName $Matches[1]
+  }
+}
+
+Write-Host "Reindexing complete."
+```
