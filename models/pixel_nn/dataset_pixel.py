@@ -106,7 +106,7 @@ class PixelDataset(Dataset):
                 reduction=reduction,
                 n=reduction_n,
                 save=False,
-                force_reload=False
+                force_reload=True
             )
             loader = torch.utils.data.DataLoader(wave_ds, batch_size=128, shuffle=False)
             enc_list = []

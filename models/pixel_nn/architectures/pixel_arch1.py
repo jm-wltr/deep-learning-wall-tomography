@@ -107,29 +107,49 @@ class PixelClassifier(PixelBase):
     def load(
         cls,
         path: Path,
-        dataset: PixelDataset,
+        dataset: "PixelDataset",
         device=None
-    ) -> 'PixelClassifier':
-        # Load base checkpoint
-        base = super().load(path, device)
-        # Extract parameters from run_name or meta
-        # For now, assume same init args
+    ) -> "PixelClassifier":
+        # Load checkpoint dict directly (do NOT call super().load)
+        checkpoint = torch.load(path, map_location=device or DEVICE)
+
+        # Recreate classifier with the args your __init__ actually supports
         model = cls(
             dataset=dataset,
-            batch_size=base.batch_size,
-            learning_rate=base.lr,
+            batch_size=checkpoint.get("batch_size", 32),
+            learning_rate=checkpoint.get("learning_rate", 1e-3),
+            # If you want to keep these consistent with training, persist them in .meta and load below
             timestamp=False,
-            binary=base.binary
-        )
-        model.load_state_dict(base.state_dict())
-        model.epochs_trained = base.epochs_trained
-        model.history = base.history
-        # load reserved meta if exists
-        meta_path = path.with_suffix('.meta')
+            binary=checkpoint.get("binary", True),
+        ).to(device or DEVICE)
+
+        # Restore weights & training state
+        print(checkpoint["state_dict"])
+        model.load_state_dict(checkpoint["state_dict"])
+        model.epochs_trained = checkpoint.get("epochs_trained", 0)
+        model.history = checkpoint.get("history", {
+            "train_loss": [], "val_loss": [], "train_acc": [], "val_acc": []
+        })
+
+        # Keep original run name (useful for logs)
+        rn = checkpoint.get("run_name")
+        if rn:
+            model.run_name = rn
+
+        # Load reserved/meta if present
+        meta_path = path.with_suffix(".meta")
         if meta_path.exists():
-            meta = torch.load(meta_path)
-            model.reserved_sections = torch.tensor(meta['reserved'])
+            meta = torch.load(meta_path, map_location=device or DEVICE)
+            reserved = meta.get("reserved")
+            if reserved is not None:
+                model.reserved_sections = torch.tensor(reserved, dtype=torch.long)
+            # Optional: if you saved these, you can adapt loaders/splits here
+            model.train_frac = meta.get("train_frac", getattr(model, "train_frac", 0.8))
+            model.seed = meta.get("seed", getattr(model, "seed", None))
+
+        model.eval()
         return model
+
 
 
     def plot_reconstructions(self):
