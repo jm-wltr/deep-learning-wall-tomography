@@ -1,17 +1,24 @@
 # Sonic Tomography with Deep Learning
 
-This project explores the use of deep learning to reconstruct the internal structure of masonry walls using acoustic tomography data. Instead of relying on classical algebraic reconstruction techniques, we aim to train neural networks directly on wave propagation signals generated via simulation and measurement. The previous version of the project I am building on can be found [here](https://saco.csic.es/s/k5ty8eazD85pd4M). This repository contains the files related to both the simulations and the neural networks, as well as a pregenerated small sample dataset for trying out the neural network.
+This project explores the use of deep learning as an alternative to classical algebraic techniques to reconstruct the internal structure of masonry walls using acoustic tomography data. The previous version of the project I am building on can be found [here](https://saco.csic.es/s/k5ty8eazD85pd4M). 
+
+**What this does (at a glance):** We represent each wall cross-section as a 30×20 pixel grid with binary values (stone/mortar). For every section, an array of 6 emitters × 11 receivers produces 66 sonic “rays,” each yielding a 1D time-amplitude waveform. A convolutional autoencoder compresses each waveform to a small latent vector (e.g., 16 dims). For each pixel we then build a feature vector that mixes (a) the pixel’s real-world bounds, (b) per-ray geometry (emitter/receiver coordinates and path length through that pixel), and (c) the 66 latent waveforms. A lightweight MLP (“pixel_nn”) predicts, per pixel, the probability of **stone vs mortar** (or a continuous value), reconstructing the internal cross-section. We train on thousands of synthetic sections from COMSOL and evaluate on held-out data, effectively learning a data-driven inverse operator that can be more robust and easier to tune than classical algebraic solvers.
+
+This repository contains the files needed for running both the simulations and the neural networks, as well as an example dataset with 300 wall cross-sections and their simulated blah blah for you to try out the neural network. We are currently working on generating much more data to
+
+This repository contains everything needed to run the simulations and the neural networks, plus an example dataset with 300 wall cross-sections and their simulated waveforms so you can train/evaluate out of the box. We’re currently generating a much larger dataset that will be released separately. Once we have this dataset we will be able to properly evaluate our model and work on improving its architecture.
 
 ## Repository Structure
 ```
 ├── artifacts  # PyTorch logs, datasets, and models
 ├── common/ # Shared utilities and data loaders
 ├── COMSOL/ # Physical simulation files
-├── data/
+├── data/ # Main dataset (for train/validate/test split)
+├── data_held_out/ # Separate testing dataset
 ├── docs/ # Detailed documentation
 ├── models/ 
-│ └── autoencoder/ # Autoencoder dataset & architectures
-│ └── pixel_nn/ # Pixel-by-pixel neural network dataset & architectures
+│ └── autoencoder/ # Autoencoder architectures
+│ └── pixel_nn/ # Pixel-by-pixel neural network architectures
 ├── notebooks/ # Jupyter Notebook demos
 ├── results/ # Model outputs, figures
 ├── sections_generator/ # Code to generate random wall cross-sections (jpeg and stl)

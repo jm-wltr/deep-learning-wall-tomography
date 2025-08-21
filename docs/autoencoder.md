@@ -41,9 +41,3 @@ On the other hand, `dataset_autoencoder` defines the PyTorch dataset wrapping th
 
 ## 3. Experiment with results
 To experiment with the models you train, you can use [notebooks/test_autoencoder.ipynb](../notebooks/test_autoencoder.ipynb), which will plot the loss curves, sample wave reconstructions from the validation dataset, the top 20 worst wave reconstructions, and a histogram of the loss per waveform. You should also take a look at it to get a good idea of how to load and use a trained autoencoder model. You can also see a compilation of plots from the notebook in [results/autoencoder/](../results/autoencoder/).
-
-
-ConvAENormEnd_resample200_lat32_do10_bn_2025-06-26_11-30-01 is with original data.
-
-ConvAENormEnd_resample150_lat32_do10_bn_2025-07-16_11-46-10 is with new data from 00000 to 000123. I was trained with  
-`python -m models.autoencoder.scripts.train_flexible_norm_end --reduction "resample" --n 150 --latent-dim 32 --dropout 0.1 --batchnorm --epochs 250 --seed 42`
