@@ -65,6 +65,44 @@ class PixelBase(nn.Module):
             'train_acc': [], 'val_acc': []
         }
 
+    def _binary_acc_from_outputs(
+        self,
+        outputs: torch.Tensor,
+        labels: torch.Tensor,
+        threshold: float = 0.5
+    ) -> float:
+        """
+        Compute binary accuracy exactly like plot_reconstructions:
+        - Threshold the RAW model outputs at `threshold` (no sigmoid).
+        - Threshold the labels the same way.
+        Works for both binary-classification (Sigmoid+BCELoss) and regression (MSE) models.
+
+        Returns:
+            float: mean accuracy over all valid elements.
+        """
+        with torch.no_grad():
+            # Move labels to same device and align shape if it's just a reshape away
+            if labels.device != outputs.device:
+                labels = labels.to(outputs.device)
+            if labels.shape != outputs.shape and labels.numel() == outputs.numel():
+                labels = labels.reshape_as(outputs)
+
+            # Ensure floating tensors
+            outputs = outputs.float()
+            labels  = labels.float()
+
+            # Validity mask to ignore NaN/Inf if any
+            valid = torch.isfinite(outputs) & torch.isfinite(labels)
+            if not torch.any(valid):
+                return float("nan")
+
+            # Binarize EXACTLY as in plot_reconstructions (no sigmoid)
+            preds_bin  = (outputs > threshold)
+            labels_bin = (labels  > threshold)
+
+            acc = (preds_bin[valid] == labels_bin[valid]).float().mean().item()
+            return acc
+
     def train_model(
         self,
         train_loader,
@@ -99,15 +137,15 @@ class PixelBase(nn.Module):
                 # Metrics
                 running_loss += loss.item() * inputs.size(0)
                 count += inputs.size(0)
-                if self.binary:
-                    preds = (outputs > 0.5).float()
-                    running_corrects += (preds == labels).sum().item()
+                # Always compute binary accuracy by thresholding at 0.5
+                epoch_acc_part = self._binary_acc_from_outputs(outputs.detach(), labels)
+                running_corrects += epoch_acc_part * inputs.size(0)
 
                 # Optional batch logging
                 if log_mode == 'batch' and batch_idx % 10 == 0:
                     elapsed = time.perf_counter() - start_time
                     avg_loss = running_loss / count
-                    avg_acc = running_corrects / count if self.binary else None
+                    avg_acc = running_corrects / count
                     print(f"Batch {batch_idx}/{total_batches} | "
                           f"loss={avg_loss:.4f}" +
                           (f", acc={avg_acc:.4f}" if self.binary else "") +
@@ -116,7 +154,7 @@ class PixelBase(nn.Module):
             # Epoch complete
             self.epochs_trained += 1
             epoch_loss = running_loss / count
-            epoch_acc = running_corrects / count if self.binary else 0.0
+            epoch_acc = running_corrects / count
 
             # Validation
             self.eval()
@@ -124,11 +162,10 @@ class PixelBase(nn.Module):
 
             # Epoch logging
             if log_mode == 'epoch':
-                log_msg = f"Epoch {self.epochs_trained} | "
-                log_msg += f"train_loss={epoch_loss:.4f}, val_loss={val_loss:.4f}"
-                if self.binary:
-                    log_msg += f", train_acc={epoch_acc:.4f}, val_acc={val_acc:.4f}"
-                print(log_msg)
+                print(f"Epoch {self.epochs_trained} | "
+                    f"train_loss={epoch_loss:.4f}, val_loss={val_loss:.4f}, "
+                    f"train_acc={epoch_acc:.4f}, val_acc={val_acc:.4f}")
+
 
             # Record in TensorBoard
             self._log_metrics(epoch_loss, epoch_acc, val_loss, val_acc)
@@ -136,7 +173,7 @@ class PixelBase(nn.Module):
                 self.plot_reconstructions()
 
     def evaluate(self, loader, criterion) -> tuple:
-        total_loss, total_corrects, count = 0.0, 0, 0
+        total_loss, total_acc_sum, count = 0.0, 0.0, 0
         self.eval()
         with torch.no_grad():
             for inputs, labels in loader:
@@ -145,11 +182,10 @@ class PixelBase(nn.Module):
                 loss = criterion(outputs, labels)
                 total_loss += loss.item() * inputs.size(0)
                 count += inputs.size(0)
-                if self.binary:
-                    preds = (outputs > 0.5).float()
-                    total_corrects += (preds == labels).sum().item()
+                acc = self._binary_acc_from_outputs(outputs, labels)
+                total_acc_sum += acc * inputs.size(0)
         avg_loss = total_loss / count
-        avg_acc = total_corrects / count if self.binary else 0.0
+        avg_acc = total_acc_sum / count
         return avg_loss, avg_acc
 
     def _log_metrics(
@@ -164,9 +200,8 @@ class PixelBase(nn.Module):
         step = self.epochs_trained
         self.writer.add_scalar('Loss/Train', train_loss, step)
         self.writer.add_scalar('Loss/Val', val_loss, step)
-        if self.binary:
-            self.writer.add_scalar('Acc/Train', train_acc, step)
-            self.writer.add_scalar('Acc/Val', val_acc, step)
+        self.writer.add_scalar('Acc/Train', train_acc, step)
+        self.writer.add_scalar('Acc/Val', val_acc, step)
 
     def plot_history(self) -> None:
         import matplotlib.pyplot as plt

@@ -119,7 +119,7 @@ class AutoencoderBase(nn.Module):
             self._log_metrics(avg_train, val_loss)
             if self.epochs_trained % 10 == 0 and hasattr(self, 'log_reconstruction'):
                 fig = self.log_reconstruction(val_loader, criterion)
-                self.writer.add_figure(f"Reconstruction/{self.epochs_trained}", fig, self.epochs_trained)
+                self.writer.add_figure(f"Reconstruction", fig, self.epochs_trained)
 
     def evaluate(self, loader, criterion) -> float:
         total_loss = 0.0
