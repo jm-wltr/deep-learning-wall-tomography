@@ -17,6 +17,9 @@ It will create log files in `artifacts/pixel_nn` in the root folder. Most import
 ```
 tensorboard --logdir artifacts/pixel_nn --port 6006
 ```
+
+## Results
+
  You can use the notebook [notebooks/test_arch1.ipynb](../notebooks/test_arch1.ipynb) to generate graphs about a trained model, and you can look at the code to see how you would use a model to make predictions. The graphs are saved in the `results\pixel_nn` folder.
 
 
@@ -29,11 +32,16 @@ tensorboard --logdir artifacts/pixel_nn --port 6006
 
 
 
-
-
-
-PixelMLP_32bs_1e-05lr_2025-06-25_13-47-09 is a really bad one that only predicted all black (because the autoencoder was missing final batch normalization).
+PixelMLP_32bs_1e-05lr_2025-06-25_13-47-09 is an old attempt that after 500 only predicted all black, and the reason was that the autoencoder was missing final batch normalization, so the wave values were very spiked and the pixel model could not learn any meaningful patterns.
 ![Epoch 500 of first model](..\results\pixel_nn\PixelMLP_32bs_1e-05lr_2025-06-25_13-47-09.png)
 
 PixelMLP_32bs_1e-04lr_2025-06-26_11-42-31 was much better and reached 92% accuracy for train data, and about 86% accuracy for test data. The train loss descended approximately linearly (and continued to descend) while the training loss started to increase from about the 400th epoch.
 ![alt text](..\results\pixel_nn\PixelMLP_32bs_1e-04lr_2025-06-26_11-42-31.png)
+
+Finally, eval_2025-08-21_09-23-50 is the autoencoder trained with the 300 samples from the example database, and we show a graph with the original cross sections and their predictions underneath. It was trained with the following command:
+
+```
+python -m models.pixel_nn.scripts.train_arch1 --ae-ckpt "C:\Users\jaime\S-RAY\deep-learning-wall-tomography\artifacts\autoencoder\checkpoints\ConvAENormEnd_resample150_lat32_do20_bn_2025-08-21_05-14-43.pt" --ae-n 150 --epochs 100 --seed 42 --lr 1e-4
+```
+
+![](..\results\pixel_nn\eval_2025-08-21_09-23-50\PixelMLP_32bs_1e-04lr_2025-08-21_06-08-28.png)

@@ -39,5 +39,11 @@ You will see the train and validation loss curves, and images of sample reconstr
 
 On the other hand, `dataset_autoencoder` defines the PyTorch dataset wrapping the waves, including reduction as specified in `waveforms.py` and illustrated in [notebooks\waveforms.ipynb](..\notebooks\waveforms.ipynb) (I recommend using resampling with n = 200). Finally, `utils` specifies small helper functions.
 
+Something important to note is that running the training model automatically creates and saves a PyTorch autoencoder dataset with a descriptive name based on the parameters. If you try to train a new model later with the same parameters, it will reuse the existing cached dataset unless the force reload option is enabled, even if the contents of the underlying `data/` folder have changed. This can lead to confusion if you are not careful (and should probably be revised). The same happens with `dataset_pixel`.
+
 ## 3. Experiment with results
-To experiment with the models you train, you can use [notebooks/test_autoencoder.ipynb](../notebooks/test_autoencoder.ipynb), which will plot the loss curves, sample wave reconstructions from the validation dataset, the top 20 worst wave reconstructions, and a histogram of the loss per waveform. You should also take a look at it to get a good idea of how to load and use a trained autoencoder model. You can also see a compilation of plots from the notebook in [results/autoencoder/](../results/autoencoder/).
+To experiment with the models you train, you can use [notebooks/test_autoencoder.ipynb](../notebooks/test_autoencoder.ipynb), which will plot the loss curves, sample wave reconstructions from the validation dataset, the top 20 worst wave reconstructions, and a histogram of the loss per waveform. You should also take a look at it to get a good idea of how to load and use a trained autoencoder model. You can also see a compilation of plots from the notebook in [results/autoencoder/](../results/autoencoder/). The results you already see there were from a model trained with the example database with the following command:
+
+`
+python -m models.autoencoder.scripts.train_flexible --reduction "resample" --n 150 --latent-dim 16 --dropout 0.2 --batchnorm --epochs 100 --seed 42    
+`
